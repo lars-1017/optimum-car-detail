@@ -1,18 +1,33 @@
-const SUPABASE_URL = process.env.SUPABASE_URL || 'https://rssimtkrgsnlbmrxgdxy.supabase.co';
+function getEnv(key) {
+  try {
+    if (typeof Deno !== 'undefined' && Deno?.env?.get) return Deno.env.get(key);
+  } catch (_) {}
+  try {
+    if (typeof Netlify !== 'undefined' && Netlify?.env?.get) return Netlify.env.get(key);
+  } catch (_) {}
+  try {
+    if (typeof process !== 'undefined' && process?.env) return process.env[key];
+  } catch (_) {}
+  return null;
+}
+
+const SUPABASE_URL = getEnv('SUPABASE_URL') || 'https://rssimtkrgsnlbmrxgdxy.supabase.co';
 const READ_KEY =
-  process.env.SUPABASE_SERVICE_ROLE_KEY ||
-  process.env.SUPABASE_ANON_KEY ||
+  getEnv('SUPABASE_SERVICE_ROLE_KEY') ||
+  getEnv('SUPABASE_ANON_KEY') ||
   'sb_publishable_mYpPedEdizMJEz9qgGrbwg_Ift0ZbTS';
 
-function parseAppointment(dateStr, timeStr) {
-  if (!dateStr) return null;
-  
-  // Clean date to strict YYYY-MM-DD
-  const cleanDate = String(dateStr).slice(0, 10);
-  const [year, month, day] = cleanDate.split('-').map(Number);
-  if (!year || !month || !day) return null;
+function formatICS(date) {
+  return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+}
 
-  // Extract time parts safely regardless of tags like "Shop Drop-Off" or "Mobile"
+function parseAppointmentDate(dateStr, timeStr) {
+  if (!dateStr) return null;
+  const cleanDate = String(dateStr).slice(0, 10);
+  const parts = cleanDate.split('-').map(Number);
+  if (parts.length !== 3 || parts.some(isNaN)) return null;
+  const [year, month, day] = parts;
+
   const match = /(\d{1,2}):(\d{2})\s*(AM|PM)/i.exec(String(timeStr || ''));
   if (!match) return null;
 
@@ -23,9 +38,11 @@ function parseAppointment(dateStr, timeStr) {
   if (modifier === 'PM' && hours < 12) hours += 12;
   if (modifier === 'AM' && hours === 12) hours = 0;
 
-  // Mountain Time to UTC conversion (+6 hours MDT)
-  const dt = new Date(Date.UTC(year, month - 1, day, hours + 6, minutes));
-  return dt.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+  // Mountain Time conversion: +6 hours for Daylight Saving (Mar–Nov), +7 for Standard Time
+  const isDST = month >= 3 && month <= 11;
+  const offsetHours = isDST ? 6 : 7;
+
+  return new Date(Date.UTC(year, month - 1, day, hours + offsetHours, minutes));
 }
 
 export default async () => {
@@ -33,9 +50,19 @@ export default async () => {
 
   try {
     const res = await fetch(query, {
-      headers: { apikey: READ_KEY, Authorization: `Bearer ${READ_KEY}` }
+      headers: {
+        apikey: READ_KEY,
+        Authorization: `Bearer ${READ_KEY}`
+      }
     });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`Supabase read failed (${res.status}): ${errText}`);
+    }
+
     const bookings = await res.json();
+    const nowUTC = formatICS(new Date());
 
     let ics = [
       'BEGIN:VCALENDAR',
@@ -43,34 +70,41 @@ export default async () => {
       'PRODID:-//Optimum Car Detail//Booking System//EN',
       'CALSCALE:GREGORIAN',
       'METHOD:PUBLISH',
-      'X-WR-CALNAME:Optimum Car Detail Bookings'
+      'X-WR-CALNAME:Optimum Car Detail Bookings',
+      'X-WR-TIMEZONE:America/Denver'
     ];
 
     if (Array.isArray(bookings)) {
       bookings.forEach((b) => {
-        const startUTC = parseAppointment(b.booking_date, b.booking_time);
-        if (!startUTC) return;
+        try {
+          const startDate = parseAppointmentDate(b.booking_date, b.booking_time);
+          if (!startDate || isNaN(startDate.getTime())) return;
 
-        // Default appointment block: 2.5 hours
-        const endObj = new Date(new Date(startUTC).getTime() + 2.5 * 60 * 60 * 1000);
-        const endUTC = endObj.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+          // Default appointment duration: 2.5 hours
+          const endDate = new Date(startDate.getTime() + 2.5 * 60 * 60 * 1000);
 
-        const client = b.client_name || 'Client';
-        const vehicle = b.vehicle_info || 'Vehicle';
-        const phone = b.client_phone || 'N/A';
-        const notes = (b.notes || 'None').replace(/\n/g, ' ');
+          const startUTC = formatICS(startDate);
+          const endUTC = formatICS(endDate);
 
-        ics.push(
-          'BEGIN:VEVENT',
-          `UID:booking-${b.id}@optimumcardetail.com`,
-          `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').split('.')[0]}Z`,
-          `DTSTART:${startUTC}`,
-          `DTEND:${endUTC}`,
-          `SUMMARY:Detail: ${client} (${vehicle})`,
-          `DESCRIPTION:Phone: ${phone}\\nNotes: ${notes}`,
-          `STATUS:CONFIRMED`,
-          'END:VEVENT'
-        );
+          const client = (b.client_name || 'Client').replace(/[\\,;]/g, ' ');
+          const vehicle = (b.vehicle_info || 'Vehicle').replace(/[\\,;]/g, ' ');
+          const phone = (b.client_phone || 'N/A').replace(/[\\,;]/g, ' ');
+          const notes = String(b.notes || 'None').replace(/[\r\n]+/g, ' ').replace(/[\\,;]/g, ' ');
+
+          ics.push(
+            'BEGIN:VEVENT',
+            `UID:booking-${b.id || Math.random().toString(36).slice(2)}@optimumcardetail.com`,
+            `DTSTAMP:${nowUTC}`,
+            `DTSTART:${startUTC}`,
+            `DTEND:${endUTC}`,
+            `SUMMARY:Detail: ${client} (${vehicle})`,
+            `DESCRIPTION:Phone: ${phone}\\nNotes: ${notes}`,
+            `STATUS:CONFIRMED`,
+            'END:VEVENT'
+          );
+        } catch (_) {
+          // Skip any individual row formatting issue without breaking the feed
+        }
       });
     }
 
@@ -84,7 +118,10 @@ export default async () => {
       }
     });
   } catch (err) {
-    return new Response('Error generating calendar feed', { status: 500 });
+    return new Response(`Error generating calendar feed: ${err?.message || err}`, {
+      status: 500,
+      headers: { 'Content-Type': 'text/plain; charset=utf-8' }
+    });
   }
 };
 
