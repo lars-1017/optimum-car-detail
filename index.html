@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Optimum Car Detail - Online Scheduling</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Serif Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&display=swap" rel="stylesheet">
+
+  <!-- EmailJS Library -->
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+  <script type="text/javascript">
+    (function(){
+      emailjs.init("YKBjRAxda8HgvqWfS");
+    })();
+  </script>
+
+  <style>
+    body {
+      background-color: #0b1a13;
+      color: #f3f4f6;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    h1, h2, h3, h4, .serif-heading {
+      font-family: 'Playfair Display', serif;
+    }
+    .btn-gold {
+      background-color: #a3824c;
+      color: #ffffff;
+    }
+    .btn-gold:hover {
+      background-color: #8c6e3b;
+    }
+    .selected-card {
+      border-color: #a3824c !important;
+      background-color: #07120d !important;
+    }
+    .cal-day { aspect-ratio: 1 / 1; }
+    .cal-day-disabled { opacity: 0.2; cursor: not-allowed; pointer-events: none; }
+    .cal-day-selected {
+      background-color: #a3824c !important;
+      color: #ffffff !important;
+      font-weight: bold;
+      border-color: #c4a164 !important;
+    }
+    .time-chip-selected {
+      background-color: #a3824c !important;
+      border-color: #c4a164 !important;
+      color: #fff !important;
+    }
+    /* Greyed out booked slots */
+    .time-chip-unavailable {
+      background-color: #141f19 !important;
+      border-color: #203126 !important;
+      color: #6b7280 !important;
+      cursor: not-allowed !important;
+      opacity: 0.6;
+    }
+    .time-chip-unavailable * {
+      color: #6b7280 !important;
+    }
+    .section-flagged {
+      border-color: #f87171 !important;
+      box-shadow: 0 0 0 1px rgba(248, 113, 113, 0.4);
+    }
+    .bot-field {
+      position: absolute;
+      left: -9999px;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+    }
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: #0b1a13; border-radius: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #183125; border-radius: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #a3824c; }
+  </style>
+</head>
+<body class="min-h-screen">
+
+  <!-- Header -->
+  <header class="bg-[#07120d] border-b border-[#183125] py-6">
+    <div class="max-w-4xl mx-auto px-4 flex justify-between items-center">
+      <div>
+        <h1 class="text-2xl font-normal tracking-wider text-white">Optimum Car Detail</h1>
+        <p class="text-xs text-emerald-200/60 mt-1">Shop Drop-Off &amp; Mobile Service • Washington, UT</p>
+      </div>
+      <span class="text-xs bg-[#a3824c]/20 text-[#d4b37f] border border-[#a3824c]/40 px-3 py-1 rounded uppercase tracking-wider font-semibold">Online Booking</span>
+    </div>
+  </header>
+
+  <!-- Main Booking Container -->
+  <main class="max-w-4xl mx-auto px-4 py-8 space-y-8">
+
+    <!-- Booking Form -->
+    <form id="bookingForm" onsubmit="handleBookingSubmit(event)" class="space-y-8">
+
+      <!-- Step 1: Select Detailing Package -->
+      <section id="sectionPackage" class="bg-[#07120d] border border-[#183125] rounded-2xl p-6 shadow-xl">
+        <h2 class="text-xl font-normal text-white mb-4 border-b border-[#183125] pb-2">1. Select Detailing Package</h2>
+        <div id="serviceContainer" class="grid md:grid-cols-3 gap-4" role="radiogroup" aria-label="Detailing package">
+          <p class="text-xs text-emerald-200/60 col-span-3">Loading live packages...</p>
+        </div>
+        <p id="packageError" class="hidden text-xs text-red-300 mt-3">Choose a package to continue.</p>
+      </section>
+
+      <!-- Step 2: Add-Ons -->
+      <section class="bg-[#07120d] border border-[#183125] rounded-2xl p-6 shadow-xl">
+        <h2 class="text-xl font-normal text-white mb-4 border-b border-[#183125] pb-2">2. Optional Add-Ons</h2>
+        <div class="grid md:grid-cols-3 gap-4">
+          <label id="addonOzone" class="flex items-center justify-between p-4 bg-[#0b1a13] border border-[#183125] rounded-xl cursor-pointer hover:border-[#a3824c]/40 transition">
+            <div class="flex items-center space-x-3">
+              <input type="checkbox" value="Ozone Treatment" data-price="59" onchange="updateTotal()" class="addon-checkbox h-4 w-4 text-[#a3824c] rounded border-[#183125] bg-[#07120d]">
+              <div>
+                <p class="font-semibold text-zinc-200 text-sm">Ozone Treatment</p>
+                <p class="text-xs text-emerald-200/60">Advanced ozone generator to sanitize interior</p>
+              </div>
+            </div>
+            <span class="text-sm font-bold text-[#d4b37f] ml-2">+$59</span>
+          </label>
+
+          <label class="flex items-center justify-between p-4 bg-[#0b1a13] border border-[#183125] rounded-xl cursor-pointer hover:border-[#a3824c]/40 transition">
+            <div class="flex items-center space-x-3">
+              <input type="checkbox" value="Headlight Restoration" data-price="59" onchange="updateTotal()" class="addon-checkbox h-4 w-4 text-[#a3824c] rounded border-[#183125] bg-[#07120d]">
+              <div>
+                <p class="font-semibold text-zinc-200 text-sm">Headlight Restoration</p>
+                <p class="text-xs text-emerald-200/60">Wet sanding &amp; polishing to restore clarity</p>
+              </div>
+            </div>
+            <span class="text-sm font-bold text-[#d4b37f] ml-2">+$59</span>
+          </label>
+
+          <label class="flex items-center justify-between p-4 bg-[#0b1a13] border border-[#183125] rounded-xl cursor-pointer hover:border-[#a3824c]/40 transition">
+            <div class="flex items-center space-x-3">
+              <input type="checkbox" value="Engine Bay Detailing" data-price="60" onchange="updateTotal()" class="addon-checkbox h-4 w-4 text-[#a3824c] rounded border-[#183125] bg-[#07120d]">
+              <div>
+                <p class="font-semibold text-zinc-200 text-sm">Engine Bay Restoration</p>
+                <p class="text-xs text-emerald-200/60">Degrease, steam scrub &amp; protective dressing</p>
+              </div>
+            </div>
+            <span class="text-sm font-bold text-[#d4b37f] ml-2">+$60</span>
+          </label>
+        </div>
+        <p id="ozoneIncludedNote" class="hidden text-xs text-emerald-200/60 mt-3 border-t border-[#183125] pt-3">
+          Ozone treatment is already included in <span class="text-[#d4b37f]" id="ozoneIncludedPackage">this package</span>, so it has been removed from add-ons.
+        </p>
+      </section>
+
+      <!-- Step 3: Calendar Date & Time Selection -->
+      <section id="sectionSchedule" class="bg-[#07120d] border border-[#183125] rounded-2xl p-6 shadow-xl">
+        <h2 class="text-xl font-normal text-white mb-4 border-b border-[#183125] pb-2">3. Select Date &amp; Time</h2>
+        <div class="grid lg:grid-cols-12 gap-6">
+          <div class="lg:col-span-7 bg-[#0b1a13] border border-[#183125] rounded-xl p-4">
+            <div class="flex items-center justify-between mb-4">
+              <button type="button" id="calPrevBtn" onclick="changeMonth(-1)" class="p-2 bg-[#07120d] hover:bg-[#183125] text-emerald-200 rounded-lg text-xs font-bold transition">← Prev</button>
+              <h3 id="calendarMonthYear" class="text-base font-normal text-white tracking-wide uppercase">Month Year</h3>
+              <button type="button" id="calNextBtn" onclick="changeMonth(1)" class="p-2 bg-[#07120d] hover:bg-[#183125] text-emerald-200 rounded-lg text-xs font-bold transition">Next →</button>
+            </div>
+            <div class="grid grid-cols-7 text-center text-[10px] font-bold text-emerald-200/50 uppercase mb-2">
+              <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+            </div>
+            <div id="calendarDaysGrid" class="grid grid-cols-7 gap-1"></div>
+          </div>
+
+          <div class="lg:col-span-5 bg-[#0b1a13] border border-[#183125] rounded-xl p-4 flex flex-col justify-between">
+            <div>
+              <h4 class="text-xs font-bold text-emerald-200/50 uppercase tracking-wider mb-1">Available Times</h4>
+              <p id="selectedDateTitle" class="text-base font-normal text-white mb-3">Please choose a date from calendar</p>
+              <div id="timeSlotsContainer" class="grid grid-cols-1 gap-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                <div class="text-xs text-emerald-200/50 italic p-3 border border-[#183125] rounded-lg text-center">
+                  Select an active date on the calendar to view available times.
+                </div>
+              </div>
+              <p id="availabilityWarning" class="hidden text-[11px] text-amber-300/80 mt-3">
+                Live availability check is offline. We will confirm your requested slot by phone.
+              </p>
+            </div>
+            <div id="selectedSlotSummary" class="hidden mt-4 pt-3 border-t border-[#183125] text-xs text-emerald-400 font-semibold">
+              ✓ <span id="summarySlotText" class="text-white"></span>
+            </div>
+          </div>
+        </div>
+        <p id="scheduleError" class="hidden text-xs text-red-300 mt-3">Pick a date and a time to continue.</p>
+      </section>
+
+      <!-- Step 4: Contact Info -->
+      <section id="sectionContact" class="bg-[#07120d] border border-[#183125] rounded-2xl p-6 shadow-xl">
+        <h2 class="text-xl font-normal text-white mb-4 border-b border-[#183125] pb-2">4. Your Information</h2>
+        <div class="grid md:grid-cols-2 gap-4">
+          <div>
+            <label for="custName" class="block text-xs font-semibold text-emerald-200/60 uppercase mb-1">Full Name</label>
+            <input type="text" id="custName" required placeholder="John Doe" class="w-full p-3 bg-[#0b1a13] border border-[#183125] rounded-xl text-zinc-100 text-sm focus:outline-none focus:border-[#a3824c]">
+          </div>
+          <div>
+            <label for="custPhone" class="block text-xs font-semibold text-emerald-200/60 uppercase mb-1">Phone Number</label>
+            <input type="tel" id="custPhone" required placeholder="(435) 555-0199" class="w-full p-3 bg-[#0b1a13] border border-[#183125] rounded-xl text-zinc-100 text-sm focus:outline-none focus:border-[#a3824c]">
+          </div>
+          <div>
+            <label for="custEmail" class="block text-xs font-semibold text-emerald-200/60 uppercase mb-1">Email Address <span class="text-emerald-200/40 normal-case">(optional)</span></label>
+            <input type="email" id="custEmail" placeholder="john@example.com" class="w-full p-3 bg-[#0b1a13] border border-[#183125] rounded-xl text-zinc-100 text-sm focus:outline-none focus:border-[#a3824c]">
+            <p class="text-[11px] text-emerald-200/50 mt-1">Add it and we will email your confirmation. Otherwise we will text or call.</p>
+          </div>
+          <div>
+            <label for="custVehicle" class="block text-xs font-semibold text-emerald-200/60 uppercase mb-1">Vehicle Details</label>
+            <input type="text" id="custVehicle" required placeholder="e.g., 2024 Ford F-150" class="w-full p-3 bg-[#0b1a13] border border-[#183125] rounded-xl text-zinc-100 text-sm focus:outline-none focus:border-[#a3824c]">
+          </div>
+
+          <div id="mobileAddressContainer" class="hidden md:col-span-2">
+            <label for="custAddress" class="block text-xs font-semibold text-[#d4b37f] uppercase mb-1">Where should we meet you?</label>
+            <input type="text" id="custAddress" placeholder="Street Address, City, Zip Code" class="w-full p-3 bg-[#0b1a13] border border-[#a3824c]/50 rounded-xl text-zinc-100 text-sm focus:outline-none focus:border-[#a3824c]">
+          </div>
+
+          <div class="md:col-span-2">
+            <label for="custNotes" class="block text-xs font-semibold text-emerald-200/60 uppercase mb-1">Special Notes / Drop-off Requests</label>
+            <textarea id="custNotes" rows="2" placeholder="Mention paint scratches, interior stains, or key drop-off instructions..." class="w-full p-3 bg-[#0b1a13] border border-[#183125] rounded-xl text-zinc-100 text-sm focus:outline-none focus:border-[#a3824c]"></textarea>
+          </div>
+
+          <div class="bot-field" aria-hidden="true">
+            <label for="botField">Leave this field empty</label>
+            <input type="text" id="botField" name="website" tabindex="-1" autocomplete="off">
+          </div>
+        </div>
+      </section>
+
+      <!-- Sticky Submit Bar -->
+      <div class="sticky md:static bottom-0 z-20 bg-[#07120d]/95 backdrop-blur-sm border border-[#183125] p-6 rounded-2xl flex flex-col md:flex-row justify-between items-center gap-4 shadow-2xl">
+        <div class="text-center md:text-left">
+          <p class="text-xs text-emerald-200/60 font-semibold tracking-wider uppercase">Estimated Total</p>
+          <p id="displayTotal" class="text-4xl font-normal text-[#d4b37f] serif-heading">$—</p>
+        </div>
+        <button id="submitBtn" type="submit" class="w-full md:w-auto btn-gold font-bold px-8 py-4 rounded-xl transition shadow-lg">
+          Confirm Booking Request
+        </button>
+      </div>
+
+    </form>
+
+    <!-- Confirmation View -->
+    <div id="confirmationScreen" class="hidden bg-[#07120d] border border-[#183125] rounded-2xl p-8 max-w-xl mx-auto my-8 text-center shadow-2xl space-y-6">
+      <div class="w-16 h-16 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center mx-auto text-3xl font-bold border border-emerald-500/30">✓</div>
+      <div>
+        <h3 class="text-2xl font-normal text-white">Booking Request Logged!</h3>
+        <p class="text-emerald-200/60 text-sm mt-1">Thank you for choosing Optimum Car Detail. Your slot has been recorded in our system.</p>
+      </div>
+
+      <div id="summaryDetails" class="bg-[#0b1a13] p-5 rounded-xl border border-[#183125] text-left text-xs space-y-2 text-zinc-300"></div>
+
+      <div class="flex flex-col sm:flex-row gap-3 justify-center">
+        <a id="addToCalendarLink" href="#" target="_blank" rel="noopener" class="btn-gold text-xs font-bold px-6 py-3 rounded-xl transition">
+          Add to Calendar
+        </a>
+        <button onclick="window.location.reload()" class="bg-[#183125] hover:bg-[#204031] text-zinc-200 text-xs font-bold px-6 py-3 rounded-xl transition">
+          Book Another Service
+        </button>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const SUPABASE_URL = 'https://rssimtkrgsnlbmrxgdxy.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_mYpPedEdizMJEz9qgGrbwg_Ift0ZbTS';
+
+    const EMAILJS_SERVICE_ID = 'service_uanlvh7';
+    const EMAILJS_SHOP_TEMPLATE_ID = 'template_sw3jes8';
+    const EMAILJS_CUSTOMER_TEMPLATE_ID = 'template_n1dfvdo';
+
+    const SCHEDULE = {
+      leadTimeHours: 2,
+      horizonDays: 60,
+      assumedJobHours: 2,
+      timeZone: 'America/Denver'
+    };
+
+    const MODE_LABELS = {
+      shop: { chip: 'Drop off at our shop', short: 'Shop Drop-Off' },
+      mobile: { chip: 'We come to you', short: 'Mobile Service' }
+    };
+
+    let servicesList = [];
+    let selectedService = null;
+    let selectedCalDateString = null;
+    let selectedSlot = null;
+
+    let currentDate = new Date();
+    let bookedByDate = {};
+    let availabilityUnknown = false;
+    const loadedMonths = new Set();
+
+    const pad = (n) => String(n).padStart(2, '0');
+    const dateKey = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+    function startOfToday() {
+      const d = new Date();
+      d.setHours(0, 0, 0, 0);
+      return d;
+    }
+
+    function horizonEnd() {
+      const d = startOfToday();
+      d.setDate(d.getDate() + SCHEDULE.horizonDays);
+      return d;
+    }
+
+    function formatTime(minutes) {
+      const h24 = Math.floor(minutes / 60);
+      const m = minutes % 60;
+      const suffix = h24 >= 12 ? 'PM' : 'AM';
+      const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
+      return `${h12}:${pad(m)} ${suffix}`;
+    }
+
+    function formatDate(dateStr) {
+      return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', {
+        weekday: 'short', month: 'short', day: 'numeric', year: 'numeric'
+      });
+    }
+
+    function parseTimeToMinutes(text) {
+      const match = /(\d{1,2}):(\d{2})\s*(AM|PM)/i.exec(String(text || ''));
+      if (!match) return null;
+      let hour = parseInt(match[1], 10) % 12;
+      if (match[3].toUpperCase() === 'PM') hour += 12;
+      return hour * 60 + parseInt(match[2], 10);
+    }
+
+    function isTrackedDurationPackage(service) {
+      if (!service || !service.name) return false;
+      return /premium\s*detail|interior\s*detail/i.test(service.name);
+    }
+
+    function slotsForDate(dateStr) {
+      const dayOfWeek = new Date(dateStr + 'T00:00:00').getDay();
+      const slots = [];
+      const add = (minutes, mode) => slots.push({ minutes, mode });
+
+      if (dayOfWeek === 0) {
+        // Closed on Sundays
+        return slots;
+      }
+
+      if (dayOfWeek >= 1 && dayOfWeek <= 4) {
+        // Mon–Thu Shop Drop-Off: 7:00 AM – 2:00 PM hourly + 2:30 PM
+        for (let m = 7 * 60; m <= 14 * 60; m += 60) add(m, 'shop');
+        add(14 * 60 + 30, 'shop');
+
+        // Mon–Thu Mobile: 3:30 PM to 5:30 PM
+        for (let m = 15 * 60 + 30; m <= 17 * 60 + 30; m += 30) add(m, 'mobile');
+      } else if (dayOfWeek === 5 || dayOfWeek === 6) {
+        // Friday & Saturday Mobile Detailing (8:00 AM to 6:00 PM block)
+        for (let m = 8 * 60; m <= 17 * 60; m += 60) add(m, 'mobile');
+      }
+
+      return slots.sort((a, b) => a.minutes - b.minutes || (a.mode === 'shop' ? -1 : 1));
+    }
+
+    function jobMinutes() {
+      if (!selectedService || !isTrackedDurationPackage(selectedService)) return 0;
+      const hours = Number(selectedService.duration_hours);
+      return Number.isFinite(hours) && hours > 0 ? hours * 60 : 0;
+    }
+
+    function slotIsPast(dateStr, minutes) {
+      const start = new Date(dateStr + 'T00:00:00');
+      start.setMinutes(minutes);
+      return start.getTime() < Date.now() + SCHEDULE.leadTimeHours * 3600 * 1000;
+    }
+
+    function slotIsTaken(dateStr, minutes) {
+      const busy = bookedByDate[dateStr];
+      if (!busy || !busy.length) return false;
+      const start = minutes;
+      const end = minutes + (jobMinutes() || SCHEDULE.assumedJobHours * 60);
+      return busy.some((b) => start < b.end && end > b.start);
+    }
+
+    function slotIsOpen(dateStr, slot) {
+      return !slotIsPast(dateStr, slot.minutes) && !slotIsTaken(dateStr, slot.minutes);
+    }
+
+    function dayHasOpenSlot(dateStr) {
+      return slotsForDate(dateStr).some((slot) => slotIsOpen(dateStr, slot));
+    }
+
+    async function loadAvailability(year, month) {
+      const key = `${year}-${month}`;
+      if (loadedMonths.has(key)) return;
+
+      const from = `${year}-${pad(month + 1)}-01`;
+      const to = `${year}-${pad(month + 1)}-${pad(new Date(year, month + 1, 0).getDate())}`;
+
+      try {
+        const res = await fetch(`/api/availability?from=${from}&to=${to}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (!data.availabilityUnknown && Array.isArray(data.bookings)) {
+            data.bookings.forEach((b) => {
+              const start = parseTimeToMinutes(b.time);
+              if (start === null) return;
+              const service = servicesList.find((s) => String(s.id) === String(b.serviceId));
+              const hours = (service && isTrackedDurationPackage(service) && Number(service.duration_hours) > 0)
+                ? Number(service.duration_hours)
+                : SCHEDULE.assumedJobHours;
+              if (!bookedByDate[b.date]) bookedByDate[b.date] = [];
+              bookedByDate[b.date].push({ start, end: start + hours * 60 });
+            });
+            loadedMonths.add(key);
+            availabilityUnknown = false;
+            document.getElementById('availabilityWarning').classList.add('hidden');
+            return;
+          }
+        }
+        throw new Error('Edge endpoint unreachable, trying client fallback');
+      } catch (err) {
+        try {
+          const sbQuery = `${SUPABASE_URL}/rest/v1/bookings?select=booking_date,booking_time,service_id&booking_date=gte.${from}&booking_date=lte.${to}`;
+          const sbRes = await fetch(sbQuery, {
+            headers: {
+              'apikey': SUPABASE_ANON_KEY,
+              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+            }
+          });
+          if (sbRes.ok) {
+            const rows = await sbRes.json();
+            if (Array.isArray(rows)) {
+              rows.forEach((r) => {
+                const start = parseTimeToMinutes(r.booking_time);
+                if (start === null) return;
+                const service = servicesList.find((s) => String(s.id) === String(r.service_id));
+                const hours = (service && isTrackedDurationPackage(service) && Number(service.duration_hours) > 0)
+                  ? Number(service.duration_hours)
+                  : SCHEDULE.assumedJobHours;
+                if (!bookedByDate[r.booking_date]) bookedByDate[r.booking_date] = [];
+                bookedByDate[r.booking_date].push({ start, end: start + hours * 60 });
+              });
+              loadedMonths.add(key);
+              availabilityUnknown = false;
+              document.getElementById('availabilityWarning').classList.add('hidden');
+              return;
+            }
+          }
+        } catch (sbErr) {
+          console.warn('Supabase fallback error:', sbErr);
+        }
+
+        availabilityUnknown = true;
+      }
+
+      document.getElementById('availabilityWarning').classList.toggle('hidden', !availabilityUnknown);
+    }
+
+    async function refreshCalendar() {
+      await loadAvailability(currentDate.getFullYear(), currentDate.getMonth());
+      renderCalendar();
+    }
+
+    function renderCalendar() {
+      const year = currentDate.getFullYear();
+      const month = currentDate.getMonth();
+
+      const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+      document.getElementById('calendarMonthYear').innerText = `${monthNames[month]} ${year}`;
+
+      const today = startOfToday();
+      const limit = horizonEnd();
+
+      const monthStart = new Date(year, month, 1);
+      const thisMonthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+      setNavDisabled(document.getElementById('calPrevBtn'), monthStart <= thisMonthStart);
+      setNavDisabled(document.getElementById('calNextBtn'), new Date(year, month + 1, 1) > limit);
+
+      const grid = document.getElementById('calendarDaysGrid');
+      grid.innerHTML = '';
+
+      for (let i = 0; i < new Date(year, month, 1).getDay(); i++) {
+        const blank = document.createElement('div');
+        blank.className = 'cal-day';
+        grid.appendChild(blank);
+      }
+
+      const lastDate = new Date(year, month + 1, 0).getDate();
+      for (let day = 1; day <= lastDate; day++) {
+        const dayObj = new Date(year, month, day);
+        const dateStr = dateKey(dayObj);
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'cal-day rounded-lg text-xs font-semibold flex items-center justify-center transition border border-[#183125] bg-[#07120d] text-zinc-200 hover:border-[#a3824c]';
+        btn.innerText = day;
+        btn.setAttribute('aria-label', formatDate(dateStr));
+
+        const isDisabled = dayObj < today || dayObj > limit || !dayHasOpenSlot(dateStr);
+
+        if (isDisabled) {
+          btn.classList.add('cal-day-disabled');
+          btn.disabled = true;
+        } else {
+          if (selectedCalDateString === dateStr) btn.classList.add('cal-day-selected');
+          btn.onclick = () => selectCalendarDate(dateStr, btn);
+        }
+
+        grid.appendChild(btn);
+      }
+    }
+
+    function setNavDisabled(btn, disabled) {
+      btn.disabled = disabled;
+      btn.classList.toggle('opacity-30', disabled);
+      btn.classList.toggle('cursor-not-allowed', disabled);
+    }
+
+    function changeMonth(offset) {
+      const next = new Date(currentDate.getFullYear(), currentDate.getMonth() + offset, 1);
+      const thisMonthStart = new Date(startOfToday().getFullYear(), startOfToday().getMonth(), 1);
+      if (next < thisMonthStart || next > horizonEnd()) return;
+      currentDate = next;
+      refreshCalendar();
+    }
+
+    function selectCalendarDate(dateStr, element) {
+      selectedCalDateString = dateStr;
+      clearSlotSelection();
+
+      document.querySelectorAll('.cal-day').forEach((d) => d.classList.remove('cal-day-selected'));
+      if (element) element.classList.add('cal-day-selected');
+
+      document.getElementById('selectedDateTitle').innerText = formatDate(dateStr);
+      renderTimeSlots();
+      clearFlags();
+      updateSubmitState();
+    }
+
+    function resetTimeSlotsView() {
+      document.getElementById('selectedDateTitle').innerText = 'Please choose a date from calendar';
+      document.getElementById('timeSlotsContainer').innerHTML = `
+        <div class="text-xs text-emerald-200/50 italic p-3 border border-[#183125] rounded-lg text-center">
+          Select an active date on the calendar to view available times.
+        </div>
+      `;
+      document.getElementById('selectedSlotSummary').classList.add('hidden');
+    }
+
+    function clearSlotSelection() {
+      selectedSlot = null;
+      document.getElementById('selectedSlotSummary').classList.add('hidden');
+      applyModeToForm(null);
+    }
+
+    function renderTimeSlots() {
+      const container = document.getElementById('timeSlotsContainer');
+      const dateStr = selectedCalDateString;
+      container.innerHTML = '';
+
+      if (!dateStr) {
+        resetTimeSlotsView();
+        return;
+      }
+
+      const slots = slotsForDate(dateStr).filter((slot) => !slotIsPast(dateStr, slot.minutes));
+
+      if (!slots.length) {
+        container.innerHTML = `
+          <div class="text-xs text-emerald-200/50 italic p-3 border border-[#183125] rounded-lg text-center">
+            Nothing left on this date. Try another day.
+          </div>
+        `;
+        return;
+      }
+
+      let openCount = 0;
+
+      slots.forEach((slot) => {
+        const taken = slotIsTaken(dateStr, slot.minutes);
+        if (!taken) openCount++;
+
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = 'time-chip w-full p-2.5 bg-[#07120d] border border-[#183125] rounded-lg text-xs text-left font-medium text-zinc-200 transition';
+        chip.disabled = taken;
+
+        if (taken) {
+          chip.classList.add('time-chip-unavailable');
+        } else {
+          chip.classList.add('hover:border-[#a3824c]');
+        }
+
+        const badge = taken
+          ? '<span class="text-[10px] uppercase tracking-wider text-zinc-500 font-bold">Booked</span>'
+          : '';
+
+        chip.innerHTML = `
+          <span class="flex items-center justify-between gap-2">
+            <span>
+              <span class="font-bold text-sm">${formatTime(slot.minutes)}</span>
+              <span class="block text-[11px] text-emerald-200/60">${MODE_LABELS[slot.mode].chip}</span>
+            </span>
+            ${badge}
+          </span>
+        `;
+
+        if (!taken) {
+          chip.onclick = () => selectSlot(slot, chip);
+        }
+
+        container.appendChild(chip);
+      });
+
+      if (!openCount) {
+        const note = document.createElement('p');
+        note.className = 'text-[11px] text-amber-300/80';
+        note.innerText = 'No openings left on this date. Try another day.';
+        container.appendChild(note);
+      }
+    }
+
+    function selectSlot(slot, element) {
+      selectedSlot = slot;
+
+      document.querySelectorAll('.time-chip').forEach((c) => c.classList.remove('time-chip-selected'));
+      element.classList.add('time-chip-selected');
+
+      document.getElementById('summarySlotText').innerText =
+        `${formatDate(selectedCalDateString)} at ${formatTime(slot.minutes)} — ${MODE_LABELS[slot.mode].chip}`;
+      document.getElementById('selectedSlotSummary').classList.remove('hidden');
+
+      applyModeToForm(slot.mode);
+      clearFlags();
+      updateSubmitState();
+    }
+
+    function applyModeToForm(mode) {
+      const container = document.getElementById('mobileAddressContainer');
+      const input = document.getElementById('custAddress');
+      const isMobile = mode === 'mobile';
+      container.classList.toggle('hidden', !isMobile);
+      input.required = isMobile;
+      if (!isMobile) input.value = '';
+    }
+
+    // ---------------------------------------------------------------------
+    // Packages
+    // ---------------------------------------------------------------------
+    async function fetchServices() {
+      const container = document.getElementById('serviceContainer');
+      try {
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/services?select=*`, {
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+          }
+        });
+
+        if (!response.ok) throw new Error(`Request failed (${response.status})`);
+
+        servicesList = await response.json();
+        if (!Array.isArray(servicesList) || !servicesList.length) throw new Error('No packages returned');
+
+        const idxPremium = servicesList.findIndex(s => s.name.toLowerCase().includes('premium detail'));
+        const idxInterior = servicesList.findIndex(s => s.name.toLowerCase().includes('interior detail'));
+        if (idxPremium !== -1 && idxInterior !== -1 && idxPremium > idxInterior) {
+          [servicesList[idxPremium], servicesList[idxInterior]] = [servicesList[idxInterior], servicesList[idxPremium]];
+        }
+
+        container.innerHTML = '';
+
+        servicesList.forEach((s, idx) => {
+          const isExec = s.name.toLowerCase().includes('executive');
+          const isTracked = isTrackedDurationPackage(s);
+
+          const durationTag = (isTracked && s.duration_hours)
+            ? `<p class="text-xs text-emerald-200/50 mt-1">Duration: ~${s.duration_hours} Hours</p>`
+            : '';
+
+          const label = document.createElement('label');
+          label.className = 'service-card relative block border-2 border-[#183125] bg-[#0b1a13] rounded-xl p-5 cursor-pointer hover:border-[#a3824c] transition focus-within:ring-2 focus-within:ring-[#a3824c]';
+          label.innerHTML = `
+            <input type="radio" name="package" class="sr-only" value="${idx}">
+            ${isExec ? '<span class="absolute -top-3 right-4 bg-[#a3824c] text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase">Executive Tier</span>' : ''}
+            <h3 class="font-normal text-lg text-zinc-100">${s.name}</h3>
+            <p class="text-2xl font-normal text-[#d4b37f] mt-1 serif-heading">$${s.price}</p>
+            ${durationTag}
+            <p class="text-xs text-emerald-200/70 mt-3 border-t border-[#183125] pt-2">${s.description || ''}</p>
+          `;
+
+          const radio = label.querySelector('input');
+          radio.addEventListener('change', () => selectService(s, label));
+
+          container.appendChild(label);
+        });
+
+        updateTotal();
+        updateSubmitState();
+      } catch (err) {
+        servicesList = [];
+        selectedService = null;
+        container.innerHTML = `
+          <div class="col-span-3 border border-red-400/40 bg-red-500/5 rounded-xl p-5 text-center space-y-3">
+            <p class="text-sm text-red-200 font-semibold">We could not load our packages just now.</p>
+            <p class="text-xs text-emerald-200/70">Give us a call or text and we will get you scheduled.</p>
+            <button type="button" onclick="window.location.reload()" class="bg-[#183125] hover:bg-[#204031] text-zinc-200 text-xs font-bold px-5 py-2.5 rounded-xl transition">Try Again</button>
+          </div>
+        `;
+        updateTotal();
+        updateSubmitState();
+      }
+    }
+
+    function selectService(service, element) {
+      selectedService = service;
+
+      document.querySelectorAll('.service-card').forEach((c) => {
+        c.classList.remove('selected-card', 'border-[#a3824c]');
+        c.classList.add('border-[#183125]', 'bg-[#0b1a13]');
+      });
+      element.classList.add('selected-card', 'border-[#a3824c]');
+      element.classList.remove('border-[#183125]', 'bg-[#0b1a13]');
+
+      syncOzoneAddon();
+      updateTotal();
+
+      if (selectedSlot && slotIsTaken(selectedCalDateString, selectedSlot.minutes)) {
+        clearSlotSelection();
+      }
+      if (selectedCalDateString && !dayHasOpenSlot(selectedCalDateString)) {
+        selectedCalDateString = null;
+        clearSlotSelection();
+        resetTimeSlotsView();
+      }
+
+      renderCalendar();
+      renderTimeSlots();
+      clearFlags();
+      updateSubmitState();
+    }
+
+    function syncOzoneAddon() {
+      const wrap = document.getElementById('addonOzone');
+      const note = document.getElementById('ozoneIncludedNote');
+      const checkbox = wrap.querySelector('.addon-checkbox');
+      const includesOzone = !!selectedService && /odor/i.test(selectedService.name);
+
+      wrap.classList.toggle('hidden', includesOzone);
+      note.classList.toggle('hidden', !includesOzone);
+      if (includesOzone) {
+        checkbox.checked = false;
+        document.getElementById('ozoneIncludedPackage').innerText = selectedService.name;
+      }
+    }
+
+    function selectedAddons() {
+      const addons = [];
+      document.querySelectorAll('.addon-checkbox:checked').forEach((cb) => {
+        if (cb.closest('label').classList.contains('hidden')) return;
+        addons.push({ name: cb.value, price: parseFloat(cb.getAttribute('data-price')) });
+      });
+      return addons;
+    }
+
+    function currentTotal() {
+      if (!selectedService) return null;
+      return selectedAddons().reduce((sum, a) => sum + a.price, parseFloat(selectedService.price));
+    }
+
+    function updateTotal() {
+      const total = currentTotal();
+      document.getElementById('displayTotal').innerText = total === null ? '$—' : '$' + total;
+      updateSubmitState();
+    }
+
+    function missingStep() {
+      if (!servicesList.length) {
+        return { label: 'Booking Unavailable — Call Or Text Us', section: 'sectionPackage', error: 'packageError', blocked: true };
+      }
+      if (!selectedService) {
+        return { label: 'Select a package to continue', section: 'sectionPackage', error: 'packageError' };
+      }
+      if (!selectedCalDateString) {
+        return { label: 'Select a date to continue', section: 'sectionSchedule', error: 'scheduleError' };
+      }
+      if (!selectedSlot) {
+        return { label: 'Choose a time to continue', section: 'sectionSchedule', error: 'scheduleError' };
+      }
+      return null;
+    }
+
+    function updateSubmitState() {
+      const missing = missingStep();
+      const btn = document.getElementById('submitBtn');
+      btn.innerText = missing ? missing.label : 'Confirm Booking Request';
+      btn.classList.toggle('opacity-70', !!missing);
+    }
+
+    function clearFlags() {
+      document.querySelectorAll('.section-flagged').forEach((s) => s.classList.remove('section-flagged'));
+      ['packageError', 'scheduleError'].forEach((id) => document.getElementById(id).classList.add('hidden'));
+    }
+
+    function flagMissing(missing) {
+      clearFlags();
+      const section = document.getElementById(missing.section);
+      section.classList.add('section-flagged');
+      const error = document.getElementById(missing.error);
+      error.innerText = missing.label.replace(/ to continue$/, '') + ' before confirming.';
+      error.classList.remove('hidden');
+      section.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    function calendarUrl(booking) {
+      const start = new Date(booking.date + 'T00:00:00');
+      start.setMinutes(booking.minutes);
+      const hours = Number(booking.durationHours) > 0 ? Number(booking.durationHours) : SCHEDULE.assumedJobHours;
+      const end = new Date(start.getTime() + hours * 3600 * 1000);
+      const stamp = (d) => `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}T${pad(d.getHours())}${pad(d.getMinutes())}00`;
+
+      const params = new URLSearchParams({
+        action: 'TEMPLATE',
+        text: `Optimum Car Detail — ${booking.serviceName}`,
+        dates: `${stamp(start)}/${stamp(end)}`,
+        details: `${booking.serviceName} (${MODE_LABELS[booking.mode].short}) for ${booking.vehicle}. Estimated total $${booking.total}.`,
+        location: booking.mode === 'mobile' ? booking.address : 'Optimum Car Detail, Washington, UT',
+        ctz: SCHEDULE.timeZone
+      });
+
+      return `https://calendar.google.com/calendar/render?${params.toString()}`;
+    }
+
+    async function handleBookingSubmit(e) {
+      e.preventDefault();
+
+      if (document.getElementById('botField').value) return;
+
+      const missing = missingStep();
+      if (missing) {
+        flagMissing(missing);
+        return;
+      }
+
+      const submitBtn = document.getElementById('submitBtn');
+      submitBtn.innerText = 'Submitting Request...';
+      submitBtn.disabled = true;
+
+      const mode = selectedSlot.mode;
+      const addons = selectedAddons();
+      const total = currentTotal();
+      const timeLabel = `${formatTime(selectedSlot.minutes)} ${MODE_LABELS[mode].short}`;
+      const address = document.getElementById('custAddress').value;
+
+      const locationPart = mode === 'mobile' ? ` | Location: ${address}` : ' | Shop Drop-Off';
+      const notesCombined = `[Mode: ${mode.toUpperCase()}] ` + document.getElementById('custNotes').value +
+        locationPart + (addons.length ? ` | Add-ons: ${addons.map(a => a.name).join(', ')}` : '');
+
+      const payload = {
+        client_name: document.getElementById('custName').value,
+        client_email: document.getElementById('custEmail').value || '',
+        client_phone: document.getElementById('custPhone').value,
+        vehicle_info: document.getElementById('custVehicle').value,
+        service_id: selectedService.id,
+        booking_date: selectedCalDateString,
+        booking_time: timeLabel,
+        total_price: total,
+        notes: notesCombined
+      };
+
+      try {
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/bookings`, {
+          method: 'POST',
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal'
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({}));
+          throw new Error(err.message || 'Submission failed');
+        }
+
+        const booking = {
+          date: selectedCalDateString,
+          minutes: selectedSlot.minutes,
+          mode,
+          serviceName: selectedService.name,
+          durationHours: selectedService.duration_hours,
+          vehicle: payload.vehicle_info,
+          total,
+          address
+        };
+        const addToCalendar = calendarUrl(booking);
+
+        const templateParams = {
+          client_name: payload.client_name,
+          client_phone: payload.client_phone,
+          client_email: payload.client_email,
+          vehicle_info: payload.vehicle_info,
+          service_name: selectedService.name,
+          service_mode: MODE_LABELS[mode].short,
+          booking_date: formatDate(payload.booking_date),
+          booking_time: formatTime(selectedSlot.minutes),
+          total_price: payload.total_price,
+          notes: notesCombined,
+          add_to_calendar_url: addToCalendar
+        };
+
+        emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_SHOP_TEMPLATE_ID, templateParams)
+          .then(() => console.log('Shop alert sent'))
+          .catch((error) => console.error('Shop alert failed:', error));
+
+        if (EMAILJS_CUSTOMER_TEMPLATE_ID && payload.client_email) {
+          emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_CUSTOMER_TEMPLATE_ID, templateParams)
+            .then(() => console.log('Customer confirmation sent'))
+            .catch((error) => console.error('Customer confirmation failed:', error));
+        }
+
+        document.getElementById('summaryDetails').innerHTML = `
+          <p><strong class="text-emerald-200/60">SERVICE:</strong> ${selectedService.name} — ${MODE_LABELS[mode].short}</p>
+          <p><strong class="text-emerald-200/60">WHEN:</strong> ${formatDate(payload.booking_date)} at ${formatTime(selectedSlot.minutes)}</p>
+          <p><strong class="text-emerald-200/60">${mode === 'mobile' ? 'WE COME TO' : 'DROP OFF AT'}:</strong> ${mode === 'mobile' ? address : 'Our Washington, UT shop'}</p>
+          <p><strong class="text-emerald-200/60">CLIENT:</strong> ${payload.client_name} (${payload.client_phone})</p>
+          <p><strong class="text-emerald-200/60">VEHICLE:</strong> ${payload.vehicle_info}</p>
+          ${addons.length ? `<p><strong class="text-emerald-200/60">ADD-ONS:</strong> ${addons.map(a => a.name).join(', ')}</p>` : ''}
+          <p><strong class="text-emerald-200/60">TOTAL ESTIMATE:</strong> $${payload.total_price}</p>
+        `;
+
+        document.getElementById('addToCalendarLink').href = addToCalendar;
+
+        document.getElementById('bookingForm').classList.add('hidden');
+        document.getElementById('confirmationScreen').classList.remove('hidden');
+
+      } catch (err) {
+        const missingNow = missingStep();
+        submitBtn.innerText = missingNow ? missingNow.label : 'Confirm Booking Request';
+        submitBtn.disabled = false;
+
+        const section = document.getElementById('sectionSchedule');
+        const error = document.getElementById('scheduleError');
+        section.classList.add('section-flagged');
+        error.innerText = `We could not save that booking (${err.message}). Please try again, or call or text us directly.`;
+        error.classList.remove('hidden');
+        section.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+
+    (async function init() {
+      await fetchServices();
+      await refreshCalendar();
+      resetTimeSlotsView();
+      updateSubmitState();
+    })();
+  </script>
+</body>
+</html>

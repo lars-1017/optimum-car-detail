@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Optimum Car Detail - Online Scheduling</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Serif Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&display=swap" rel="stylesheet">
+  
+  <!-- EmailJS Library -->
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+  <script type="text/javascript">
+    (function(){
+      emailjs.init("YKBjRAxda8HgvqWfS");
+    })();
+  </script>
+
+  <style>
+    body { 
+      background-color: #0b1a13; 
+      color: #f3f4f6; 
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    h1, h2, h3, h4, .serif-heading { 
+      font-family: 'Playfair Display', serif; 
+    }
+    .btn-gold {
+      background-color: #a3824c;
+      color: #ffffff;
+    }
+    .btn-gold:hover {
+      background-color: #8c6e3b;
+    }
+    .selected-card { 
+      border-color: #a3824c !important; 
+      background-color: #07120d !important; 
+    }
+    .cal-day { aspect-ratio: 1 / 1; }
+    .cal-day-disabled { opacity: 0.2; cursor: not-allowed; pointer-events: none; }
+    .cal-day-selected { 
+      background-color: #a3824c !important; 
+      color: #ffffff !important; 
+      font-weight: bold; 
+      border-color: #c4a164 !important; 
+    }
+    .time-chip-selected { 
+      background-color: #a3824c !important; 
+      border-color: #c4a164 !important; 
+      color: #fff !important; 
+    }
+  </style>
+</head>
+<body class="min-h-screen">
+
+  <!-- Header -->
+  <header class="bg-[#07120d] border-b border-[#183125] py-6">
+    <div class="max-w-4xl mx-auto px-4 flex justify-between items-center">
+      <div>
+        <h1 class="text-2xl font-normal tracking-wider text-white">Optimum Car Detail</h1>
+        <p class="text-xs text-emerald-200/60 mt-1">Shop Drop-Off & Mobile Service • Washington, UT</p>
+      </div>
+      <span class="text-xs bg-[#a3824c]/20 text-[#d4b37f] border border-[#a3824c]/40 px-3 py-1 rounded uppercase tracking-wider font-semibold">Online Booking</span>
+    </div>
+  </header>
+
+  <!-- Main Booking Container -->
+  <main class="max-w-4xl mx-auto px-4 py-8 space-y-8">
+
+    <!-- Interactive Schedule Tutorial Banner -->
+    <section class="bg-[#07120d] border border-[#a3824c]/30 rounded-2xl p-6 shadow-2xl relative overflow-hidden">
+      <div class="flex items-center space-x-2 mb-3">
+        <span class="bg-[#a3824c] text-white text-[10px] font-bold px-2.5 py-0.5 rounded uppercase tracking-wider">How Scheduling Works</span>
+        <span class="text-xs text-emerald-200/60">Quick Guide</span>
+      </div>
+
+      <div class="grid md:grid-cols-3 gap-4 text-xs">
+        <div class="bg-[#0b1a13] p-4 rounded-xl border border-[#183125]">
+          <div class="flex items-center space-x-2 text-[#d4b37f] font-bold mb-1">
+            <span>☀️ Weekdays Before 3 PM</span>
+          </div>
+          <p class="text-zinc-200 font-semibold">Shop Drop-Off</p>
+          <p class="text-emerald-200/60 mt-1">Drop off at our Washington shop between 7:00 AM and 3:00 PM (Mon–Fri).</p>
+        </div>
+
+        <div class="bg-[#0b1a13] p-4 rounded-xl border border-[#183125]">
+          <div class="flex items-center space-x-2 text-[#d4b37f] font-bold mb-1">
+            <span>🌙 Mobile Detailing</span>
+          </div>
+          <p class="text-zinc-200 font-semibold">Flexible After-Hours</p>
+          <p class="text-emerald-200/60 mt-1">Mon–Thu after 3 PM | <strong>Fridays 1:30 PM – 5:30 PM</strong>.</p>
+        </div>
+
+        <div class="bg-[#0b1a13] p-4 rounded-xl border border-[#183125]">
+          <div class="flex items-center space-x-2 text-[#d4b37f] font-bold mb-1">
+            <span>🚗 Weekends (Sat – Sun)</span>
+          </div>
+          <p class="text-zinc-200 font-semibold">Full-Day Mobile Service</p>
+          <p class="text-emerald-200/60 mt-1">We bring the full mobile rig to you Saturday & Sunday from 8:00 AM to 6:00 PM.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Booking Form -->
+    <form id="bookingForm" onsubmit="handleBookingSubmit(event)" class="space-y-8">
+      
+      <!-- Step 1: Service Type -->
+      <section class="bg-[#07120d] border border-[#183125] rounded-2xl p-6 shadow-xl">
+        <h2 class="text-xl font-normal text-white mb-4 border-b border-[#183125] pb-2">1. Choose Service Mode</h2>
+        <div class="grid md:grid-cols-2 gap-4">
+          <div onclick="setServiceMode('shop', this)" id="modeShopCard" class="mode-card selected-card border-2 border-[#a3824c] rounded-xl p-5 cursor-pointer transition">
+            <div class="flex items-center justify-between">
+              <h3 class="font-bold text-zinc-100 text-base">Shop Drop-Off</h3>
+              <span class="text-[10px] bg-[#183125] text-emerald-200 font-bold px-2 py-0.5 rounded">Mon – Fri (Before 3 PM)</span>
+            </div>
+            <p class="text-xs text-emerald-200/60 mt-2">Drop-off between <strong>7:00 AM – 3:00 PM</strong> at our Washington shop.</p>
+          </div>
+
+          <div onclick="setServiceMode('mobile', this)" id="modeMobileCard" class="mode-card border-2 border-[#183125] bg-[#0b1a13] rounded-xl p-5 cursor-pointer hover:border-[#a3824c]/50 transition">
+            <div class="flex items-center justify-between">
+              <h3 class="font-bold text-zinc-100 text-base">Mobile Detailing</h3>
+              <span class="text-[10px] bg-[#a3824c]/20 text-[#d4b37f] font-bold px-2 py-0.5 rounded border border-[#a3824c]/30">We Come To You</span>
+            </div>
+            <p class="text-xs text-emerald-200/60 mt-2">Mon–Thu after 3 PM, <strong>Fri 1:30 PM–5:30 PM</strong>, & Sat–Sun 8 AM–6 PM.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Step 2: Select Package -->
+      <section class="bg-[#07120d] border border-[#183125] rounded-2xl p-6 shadow-xl">
+        <h2 class="text-xl font-normal text-white mb-4 border-b border-[#183125] pb-2">2. Select Detailing Package</h2>
+        <div id="serviceContainer" class="grid md:grid-cols-3 gap-4">
+          <p class="text-xs text-emerald-200/60 col-span-3">Loading live packages...</p>
+        </div>
+      </section>
+
+      <!-- Step 3: Add-Ons -->
+      <section class="bg-[#07120d] border border-[#183125] rounded-2xl p-6 shadow-xl">
+        <h2 class="text-xl font-normal text-white mb-4 border-b border-[#183125] pb-2">3. Optional Add-Ons</h2>
+        <div class="grid md:grid-cols-3 gap-4">
+          <label class="flex items-center justify-between p-4 bg-[#0b1a13] border border-[#183125] rounded-xl cursor-pointer hover:border-[#a3824c]/40 transition">
+            <div class="flex items-center space-x-3">
+              <input type="checkbox" value="Ozone Treatment" data-price="59" onchange="updateTotal()" class="addon-checkbox h-4 w-4 text-[#a3824c] rounded border-[#183125] bg-[#07120d]">
+              <div>
+                <p class="font-semibold text-zinc-200 text-sm">Ozone Treatment</p>
+                <p class="text-xs text-emerald-200/60">Sanitize & remove stubborn odors</p>
+              </div>
+            </div>
+            <span class="text-sm font-bold text-[#d4b37f] ml-2">+$59</span>
+          </label>
+
+          <label class="flex items-center justify-between p-4 bg-[#0b1a13] border border-[#183125] rounded-xl cursor-pointer hover:border-[#a3824c]/40 transition">
+            <div class="flex items-center space-x-3">
+              <input type="checkbox" value="Headlight Restoration" data-price="59" onchange="updateTotal()" class="addon-checkbox h-4 w-4 text-[#a3824c] rounded border-[#183125] bg-[#07120d]">
+              <div>
+                <p class="font-semibold text-zinc-200 text-sm">Headlight Restoration</p>
+                <p class="text-xs text-emerald-200/60">Wet sanding & optical clarity polishing</p>
+              </div>
+            </div>
+            <span class="text-sm font-bold text-[#d4b37f] ml-2">+$59</span>
+          </label>
+
+          <label class="flex items-center justify-between p-4 bg-[#0b1a13] border border-[#183125] rounded-xl cursor-pointer hover:border-[#a3824c]/40 transition">
+            <div class="flex items-center space-x-3">
+              <input type="checkbox" value="Engine Bay Detailing" data-price="60" onchange="updateTotal()" class="addon-checkbox h-4 w-4 text-[#a3824c] rounded border-[#183125] bg-[#07120d]">
+              <div>
+                <p class="font-semibold text-zinc-200 text-sm">Engine Bay Restoration</p>
+                <p class="text-xs text-emerald-200/60">Degrease, steam scrub & dressing</p>
+              </div>
+            </div>
+            <span class="text-sm font-bold text-[#d4b37f] ml-2">+$60</span>
+          </label>
+        </div>
+      </section>
+
+      <!-- Step 4: Calendar Date & Time -->
+      <section class="bg-[#07120d] border border-[#183125] rounded-2xl p-6 shadow-xl">
+        <h2 class="text-xl font-normal text-white mb-4 border-b border-[#183125] pb-2">4. Select Date & Time Slot</h2>
+        <div class="grid lg:grid-cols-12 gap-6">
+          <div class="lg:col-span-7 bg-[#0b1a13] border border-[#183125] rounded-xl p-4">
+            <div class="flex items-center justify-between mb-4">
+              <button type="button" onclick="changeMonth(-1)" class="p-2 bg-[#07120d] hover:bg-[#183125] text-emerald-200 rounded-lg text-xs font-bold transition">← Prev</button>
+              <h3 id="calendarMonthYear" class="text-base font-normal text-white tracking-wide uppercase">Month Year</h3>
+              <button type="button" onclick="changeMonth(1)" class="p-2 bg-[#07120d] hover:bg-[#183125] text-emerald-200 rounded-lg text-xs font-bold transition">Next →</button>
+            </div>
+            <div class="grid grid-cols-7 text-center text-[10px] font-bold text-emerald-200/50 uppercase mb-2">
+              <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+            </div>
+            <div id="calendarDaysGrid" class="grid grid-cols-7 gap-1"></div>
+            <p id="modeHelperText" class="text-[11px] text-emerald-200/60 mt-3 text-center border-t border-[#183125] pt-2">
+              Showing available dates for <strong class="text-[#d4b37f]">Shop Drop-Off (Mon–Fri Before 3 PM)</strong>
+            </p>
+          </div>
+
+          <div class="lg:col-span-5 bg-[#0b1a13] border border-[#183125] rounded-xl p-4 flex flex-col justify-between">
+            <div>
+              <h4 class="text-xs font-bold text-emerald-200/50 uppercase tracking-wider mb-1">Available Time Slots</h4>
+              <p id="selectedDateTitle" class="text-base font-normal text-white mb-3">Please choose a date from calendar</p>
+              <div id="timeSlotsContainer" class="grid grid-cols-1 gap-2">
+                <div class="text-xs text-emerald-200/50 italic p-3 border border-[#183125] rounded-lg text-center">
+                  Select an active date on the calendar to view available arrival slots.
+                </div>
+              </div>
+            </div>
+            <div id="selectedSlotSummary" class="hidden mt-4 pt-3 border-t border-[#183125] text-xs text-emerald-400 font-semibold">
+              ✓ Selected Slot: <span id="summarySlotText" class="text-white font-mono"></span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Step 5: Contact Info -->
+      <section class="bg-[#07120d] border border-[#183125] rounded-2xl p-6 shadow-xl">
+        <h2 class="text-xl font-normal text-white mb-4 border-b border-[#183125] pb-2">5. Your Information</h2>
+        <div class="grid md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-emerald-200/60 uppercase mb-1">Full Name</label>
+            <input type="text" id="custName" required placeholder="John Doe" class="w-full p-3 bg-[#0b1a13] border border-[#183125] rounded-xl text-zinc-100 text-sm focus:outline-none focus:border-[#a3824c]">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-emerald-200/60 uppercase mb-1">Phone Number</label>
+            <input type="tel" id="custPhone" required placeholder="(435) 555-0199" class="w-full p-3 bg-[#0b1a13] border border-[#183125] rounded-xl text-zinc-100 text-sm focus:outline-none focus:border-[#a3824c]">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-emerald-200/60 uppercase mb-1">Email Address</label>
+            <input type="email" id="custEmail" required placeholder="john@example.com" class="w-full p-3 bg-[#0b1a13] border border-[#183125] rounded-xl text-zinc-100 text-sm focus:outline-none focus:border-[#a3824c]">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-emerald-200/60 uppercase mb-1">Vehicle Details</label>
+            <input type="text" id="custVehicle" required placeholder="e.g., 2024 Ford F-150" class="w-full p-3 bg-[#0b1a13] border border-[#183125] rounded-xl text-zinc-100 text-sm focus:outline-none focus:border-[#a3824c]">
+          </div>
+
+          <div id="mobileAddressContainer" class="hidden md:col-span-2">
+            <label class="block text-xs font-semibold text-[#d4b37f] uppercase mb-1">Mobile Service Address</label>
+            <input type="text" id="custAddress" placeholder="Street Address, City, Zip Code" class="w-full p-3 bg-[#0b1a13] border border-[#a3824c]/50 rounded-xl text-zinc-100 text-sm focus:outline-none focus:border-[#a3824c]">
+          </div>
+
+          <div class="md:col-span-2">
+            <label class="block text-xs font-semibold text-emerald-200/60 uppercase mb-1">Special Notes / Drop-off Requests</label>
+            <textarea id="custNotes" rows="2" placeholder="Mention paint scratches, interior stains, or key drop-off instructions..." class="w-full p-3 bg-[#0b1a13] border border-[#183125] rounded-xl text-zinc-100 text-sm focus:outline-none focus:border-[#a3824c]"></textarea>
+          </div>
+        </div>
+      </section>
+
+      <!-- Submit Bar -->
+      <div class="bg-[#07120d] border border-[#183125] p-6 rounded-2xl flex flex-col md:flex-row justify-between items-center gap-4 shadow-2xl">
+        <div>
+          <p class="text-xs text-emerald-200/60 font-semibold tracking-wider uppercase">Estimated Total</p>
+          <p id="displayTotal" class="text-4xl font-normal text-[#d4b37f] serif-heading">$0</p>
+        </div>
+        <button id="submitBtn" type="submit" class="w-full md:w-auto btn-gold font-bold px-8 py-4 rounded-xl transition shadow-lg">
+          Confirm Booking Request
+        </button>
+      </div>
+
+    </form>
+
+    <!-- Confirmation View -->
+    <div id="confirmationScreen" class="hidden bg-[#07120d] border border-[#183125] rounded-2xl p-8 max-w-xl mx-auto my-8 text-center shadow-2xl space-y-6">
+      <div class="w-16 h-16 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center mx-auto text-3xl font-bold border border-emerald-500/30">✓</div>
+      <div>
+        <h3 class="text-2xl font-normal text-white">Booking Request Logged!</h3>
+        <p class="text-emerald-200/60 text-sm mt-1">Thank you for choosing Optimum Car Detail. Your slot has been recorded in our system.</p>
+      </div>
+
+      <div id="summaryDetails" class="bg-[#0b1a13] p-5 rounded-xl border border-[#183125] text-left text-xs space-y-2 text-zinc-300 font-mono"></div>
+
+      <button onclick="window.location.reload()" class="bg-[#183125] hover:bg-[#204031] text-zinc-200 text-xs font-bold px-6 py-3 rounded-xl transition">
+        Book Another Service
+      </button>
+    </div>
+  </main>
+
+  <script>
+    const SUPABASE_URL = 'https://rssimtkrgsnlbmrxgdxy.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_mYpPedEdizMJEz9qgGrbwg_Ift0ZbTS';
+
+    let servicesList = [];
+    let selectedService = null;
+    let currentMode = 'shop';
+    
+    let currentDate = new Date();
+    let selectedCalDateString = null;
+    let selectedTimeSlot = null;
+
+    function setServiceMode(mode, element) {
+      currentMode = mode;
+      selectedCalDateString = null;
+      selectedTimeSlot = null;
+      
+      document.querySelectorAll('.mode-card').forEach(c => {
+        c.classList.remove('selected-card', 'border-[#a3824c]');
+        c.classList.add('border-[#183125]', 'bg-[#0b1a13]');
+      });
+
+      element.classList.add('selected-card', 'border-[#a3824c]');
+      element.classList.remove('border-[#183125]', 'bg-[#0b1a13]');
+
+      const addressContainer = document.getElementById('mobileAddressContainer');
+      const addressInput = document.getElementById('custAddress');
+      const modeHelper = document.getElementById('modeHelperText');
+
+      if (mode === 'mobile') {
+        addressContainer.classList.remove('hidden');
+        addressInput.required = true;
+        modeHelper.innerHTML = 'Showing available dates for <strong class="text-[#d4b37f]">Mobile Detailing (Mon–Thu after 3 PM, Fri 1:30 PM–5:30 PM, Sat–Sun 8 AM–6 PM)</strong>';
+      } else {
+        addressContainer.classList.add('hidden');
+        addressInput.required = false;
+        modeHelper.innerHTML = 'Showing available dates for <strong class="text-[#d4b37f]">Shop Drop-Off (Mon–Fri Before 3 PM)</strong>';
+      }
+
+      renderCalendar();
+      resetTimeSlotsView();
+    }
+
+    function renderCalendar() {
+      const year = currentDate.getFullYear();
+      const month = currentDate.getMonth();
+
+      const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+      document.getElementById('calendarMonthYear').innerText = `${monthNames[month]} ${year}`;
+
+      const firstDayIndex = new Date(year, month, 1).getDay();
+      const lastDate = new Date(year, month + 1, 0).getDate();
+
+      const grid = document.getElementById('calendarDaysGrid');
+      grid.innerHTML = '';
+
+      const today = new Date();
+      today.setHours(0,0,0,0);
+
+      for (let i = 0; i < firstDayIndex; i++) {
+        const blank = document.createElement('div');
+        blank.className = 'cal-day';
+        grid.appendChild(blank);
+      }
+
+      for (let day = 1; day <= lastDate; day++) {
+        const dayObj = new Date(year, month, day);
+        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const dayOfWeek = dayObj.getDay();
+        const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'cal-day rounded-lg text-xs font-semibold flex items-center justify-center transition border border-[#183125] bg-[#07120d] text-zinc-200 hover:border-[#a3824c]';
+        btn.innerText = day;
+
+        let isDisabled = false;
+
+        if (dayObj < today) {
+          isDisabled = true;
+        } else if (currentMode === 'shop' && isWeekend) {
+          isDisabled = true;
+        }
+
+        if (isDisabled) {
+          btn.classList.add('cal-day-disabled');
+        } else {
+          if (selectedCalDateString === dateStr) {
+            btn.classList.add('cal-day-selected');
+          }
+          btn.onclick = () => selectCalendarDate(dateStr, btn, dayOfWeek);
+        }
+
+        grid.appendChild(btn);
+      }
+    }
+
+    function changeMonth(offset) {
+      currentDate.setMonth(currentDate.getMonth() + offset);
+      renderCalendar();
+    }
+
+    function selectCalendarDate(dateStr, element, dayOfWeek) {
+      selectedCalDateString = dateStr;
+      selectedTimeSlot = null;
+
+      document.querySelectorAll('.cal-day').forEach(d => d.classList.remove('cal-day-selected'));
+      element.classList.add('cal-day-selected');
+
+      const dateObj = new Date(dateStr + 'T00:00:00');
+      const formattedDate = dateObj.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+      document.getElementById('selectedDateTitle').innerText = formattedDate;
+
+      renderTimeSlots(dayOfWeek);
+    }
+
+    function resetTimeSlotsView() {
+      document.getElementById('selectedDateTitle').innerText = 'Please choose a date from calendar';
+      document.getElementById('timeSlotsContainer').innerHTML = `
+        <div class="text-xs text-emerald-200/50 italic p-3 border border-[#183125] rounded-lg text-center">
+          Select an active date on the calendar to view available arrival slots.
+        </div>
+      `;
+      document.getElementById('selectedSlotSummary').classList.add('hidden');
+    }
+
+    async function renderTimeSlots(dayOfWeek) {
+      const container = document.getElementById('timeSlotsContainer');
+      container.innerHTML = '<p class="text-xs text-emerald-200/50 italic p-3 text-center">Checking availability...</p>';
+
+      let bookedSlots = [];
+      try {
+        const response = await fetch(
+          `${SUPABASE_URL}/rest/v1/bookings?select=booking_time&booking_date=eq.${selectedCalDateString}`, 
+          {
+            headers: {
+              'apikey': SUPABASE_ANON_KEY,
+              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+            }
+          }
+        );
+        const existingBookings = await response.json();
+        if (Array.isArray(existingBookings)) {
+          bookedSlots = existingBookings.map(b => b.booking_time);
+        }
+      } catch (err) {
+        console.error('Error fetching booked slots:', err);
+      }
+
+      container.innerHTML = '';
+
+      let slots = [];
+      const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
+      const isFriday = (dayOfWeek === 5);
+
+      if (currentMode === 'shop') {
+        slots = [
+          '07:00 AM Drop-Off',
+          '09:00 AM Drop-Off',
+          '11:00 AM Drop-Off',
+          '01:00 PM Drop-Off',
+          '02:30 PM Drop-Off (Last Before 3 PM)'
+        ];
+      } else {
+        if (isWeekend) {
+          slots = [
+            '08:00 AM Weekend Mobile',
+            '10:30 AM Weekend Mobile',
+            '01:00 PM Weekend Mobile',
+            '03:30 PM Weekend Mobile (Ends by 6:00 PM)'
+          ];
+        } else if (isFriday) {
+          // Friday Mobile Hours: 1:30 PM to 5:30 PM
+          slots = [
+            '01:30 PM Friday Mobile',
+            '02:30 PM Friday Mobile',
+            '03:30 PM Friday Mobile',
+            '04:30 PM Friday Mobile'
+          ];
+        } else {
+          // Mon-Thu Mobile Hours: After 3 PM
+          slots = [
+            '03:30 PM Mobile Slot',
+            '04:30 PM Mobile Slot',
+            '05:30 PM Mobile Slot'
+          ];
+        }
+      }
+
+      slots.forEach(slot => {
+        const isBooked = bookedSlots.includes(slot);
+        const chip = document.createElement('button');
+        chip.type = 'button';
+
+        if (isBooked) {
+          chip.className = 'w-full p-2.5 bg-red-950/30 border border-red-900/50 rounded-lg text-xs text-left font-medium text-red-400/60 cursor-not-allowed flex justify-between items-center';
+          chip.innerHTML = `<span>${slot}</span> <span class="text-[10px] bg-red-900/40 text-red-300 px-2 py-0.5 rounded uppercase font-bold">Booked</span>`;
+          chip.disabled = true;
+        } else {
+          chip.className = 'time-chip w-full p-2.5 bg-[#07120d] border border-[#183125] rounded-lg text-xs text-left font-medium text-zinc-200 hover:border-[#a3824c] transition';
+          chip.innerText = slot;
+
+          chip.onclick = () => {
+            document.querySelectorAll('.time-chip').forEach(c => c.classList.remove('time-chip-selected'));
+            chip.classList.add('time-chip-selected');
+            selectedTimeSlot = slot;
+
+            document.getElementById('summarySlotText').innerText = `${selectedCalDateString} @ ${slot}`;
+            document.getElementById('selectedSlotSummary').classList.remove('hidden');
+          };
+        }
+
+        container.appendChild(chip);
+      });
+    }
+
+    async function fetchServices() {
+      const container = document.getElementById('serviceContainer');
+      try {
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/services?select=*`, {
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+          }
+        });
+        
+        const rawServices = await response.json();
+        
+        // Custom sort: Premium Detail first, Interior Detail second, then others
+        servicesList = rawServices.sort((a, b) => {
+          const nameA = a.name.toLowerCase();
+          const nameB = b.name.toLowerCase();
+
+          const getRank = (name) => {
+            if (name.includes('premium')) return 1;
+            if (name.includes('interior')) return 2;
+            return 3;
+          };
+
+          return getRank(nameA) - getRank(nameB);
+        });
+
+        container.innerHTML = '';
+
+        servicesList.forEach((s, idx) => {
+          const card = document.createElement('div');
+          const isSelectedDefault = (idx === 0);
+          
+          card.className = `service-card cursor-pointer border-2 ${isSelectedDefault ? 'border-[#a3824c] selected-card' : 'border-[#183125] bg-[#0b1a13]'} rounded-xl p-5 hover:border-[#a3824c] transition relative`;
+          card.onclick = () => selectService(s, card);
+
+          card.innerHTML = `
+            ${idx === 0 ? '<span class="absolute -top-3 right-4 bg-[#a3824c] text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase">Most Popular</span>' : ''}
+            <h3 class="font-normal text-lg text-zinc-100">${s.name}</h3>
+            <p class="text-2xl font-normal text-[#d4b37f] mt-1 serif-heading">$${s.price}</p>
+            <p class="text-xs text-emerald-200/50 mt-1">Duration: ~${s.duration_hours} Hours</p>
+            <p class="text-xs text-emerald-200/70 mt-3 border-t border-[#183125] pt-2">${s.description || ''}</p>
+          `;
+
+          container.appendChild(card);
+
+          if (isSelectedDefault) {
+            selectedService = s;
+          }
+        });
+
+        updateTotal();
+      } catch (err) {
+        container.innerHTML = `<p class="text-xs text-red-400 col-span-3">Error loading services: ${err.message}</p>`;
+      }
+    }
+
+    function selectService(service, element) {
+      selectedService = service;
+      document.querySelectorAll('.service-card').forEach(c => {
+        c.classList.remove('selected-card', 'border-[#a3824c]');
+        c.classList.add('border-[#183125]', 'bg-[#0b1a13]');
+      });
+      element.classList.add('selected-card', 'border-[#a3824c]');
+      element.classList.remove('border-[#183125]', 'bg-[#0b1a13]');
+      updateTotal();
+    }
+
+    function updateTotal() {
+      if (!selectedService) return;
+      let total = parseFloat(selectedService.price);
+      document.querySelectorAll('.addon-checkbox:checked').forEach(cb => {
+        total += parseFloat(cb.getAttribute('data-price'));
+      });
+      document.getElementById('displayTotal').innerText = '$' + total;
+    }
+
+    async function handleBookingSubmit(e) {
+      e.preventDefault();
+
+      if (!selectedCalDateString) {
+        alert('Please pick an available date from the calendar.');
+        return;
+      }
+      if (!selectedTimeSlot) {
+        alert('Please select a time slot for your chosen date.');
+        return;
+      }
+      
+      const submitBtn = document.getElementById('submitBtn');
+      submitBtn.innerText = 'Submitting Request...';
+      submitBtn.disabled = true;
+
+      try {
+        const checkAvailability = await fetch(
+          `${SUPABASE_URL}/rest/v1/bookings?select=id&booking_date=eq.${selectedCalDateString}&booking_time=eq.${encodeURIComponent(selectedTimeSlot)}`, 
+          {
+            headers: {
+              'apikey': SUPABASE_ANON_KEY,
+              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+            }
+          }
+        );
+        const existing = await checkAvailability.json();
+
+        if (Array.isArray(existing) && existing.length > 0) {
+          alert('Sorry! That time slot was just booked by another customer. Please select another slot.');
+          const dateObj = new Date(selectedCalDateString + 'T00:00:00');
+          renderTimeSlots(dateObj.getDay());
+          submitBtn.innerText = 'Confirm Booking Request';
+          submitBtn.disabled = false;
+          return;
+        }
+      } catch (err) {
+        console.error('Availability check error:', err);
+      }
+
+      const addons = [];
+      document.querySelectorAll('.addon-checkbox:checked').forEach(cb => addons.push(cb.value));
+
+      const addressInput = document.getElementById('custAddress');
+      const clientAddress = (currentMode === 'mobile' && addressInput && addressInput.value) 
+        ? addressInput.value 
+        : 'Shop Drop-Off (Optimum Car Detail Shop)';
+
+      const notesCombined = `[Mode: ${currentMode.toUpperCase()}] ` + document.getElementById('custNotes').value + ` | Address: ${clientAddress}` + (addons.length ? ` | Add-ons: ${addons.join(', ')}` : '');
+
+      const payload = {
+        client_name: document.getElementById('custName').value,
+        client_email: document.getElementById('custEmail').value,
+        client_phone: document.getElementById('custPhone').value,
+        vehicle_info: document.getElementById('custVehicle').value,
+        service_id: selectedService.id,
+        booking_date: selectedCalDateString,
+        booking_time: selectedTimeSlot,
+        total_price: parseFloat(document.getElementById('displayTotal').innerText.replace('$', '')),
+        notes: notesCombined
+      };
+
+      try {
+        // 1. Save to Supabase Database
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/bookings`, {
+          method: 'POST',
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal'
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+          const err = await response.json();
+          throw new Error(err.message || 'Database submission failed');
+        }
+
+        // 2. Trigger Email Notification via EmailJS
+        const templateParams = {
+          client_name: payload.client_name,
+          client_phone: payload.client_phone,
+          client_email: payload.client_email,
+          client_address: clientAddress,
+          vehicle_info: payload.vehicle_info,
+          service_name: selectedService.name,
+          booking_date: payload.booking_date,
+          booking_time: payload.booking_time,
+          total_price: payload.total_price,
+          notes: document.getElementById('custNotes').value || 'None'
+        };
+
+        await emailjs.send('service_uanlvh7', 'template_sw3jes8', templateParams);
+
+        // 3. Display Confirmation View
+        document.getElementById('summaryDetails').innerHTML = `
+          <p><strong>SERVICE MODE:</strong> ${currentMode === 'mobile' ? 'Mobile Detailing' : 'Shop Drop-Off'}</p>
+          <p><strong>CLIENT:</strong> ${payload.client_name} (${payload.client_phone})</p>
+          <p><strong>LOCATION / ADDRESS:</strong> ${clientAddress}</p>
+          <p><strong>VEHICLE:</strong> ${payload.vehicle_info}</p>
+          <p><strong>PACKAGE:</strong> ${selectedService.name}</p>
+          <p><strong>DATE & TIME:</strong> ${payload.booking_date} @ ${payload.booking_time}</p>
+          <p><strong>TOTAL ESTIMATE:</strong> $${payload.total_price}</p>
+        `;
+
+        document.getElementById('bookingForm').classList.add('hidden');
+        document.getElementById('confirmationScreen').classList.remove('hidden');
+
+      } catch (err) {
+        alert('Booking Error: ' + err.message);
+        submitBtn.innerText = 'Confirm Booking Request';
+        submitBtn.disabled = false;
+      }
+    }
+
+    fetchServices();
+    renderCalendar();
+  </script>
+</body>
+</html>
