@@ -1,0 +1,7 @@
+[[edge_functions]]
+  path = "/api/calendar"
+  function = "calendar"
+
+[[edge_functions]]
+  path = "/api/availability"
+  function = "availability"
