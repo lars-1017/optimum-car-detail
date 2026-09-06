@@ -139,8 +139,19 @@
       <!-- Step 3: Add-Ons -->
       <section class="bg-[#07120d] border border-[#183125] rounded-2xl p-6 shadow-xl">
         <h2 class="text-xl font-normal text-white mb-4 border-b border-[#183125] pb-2">3. Optional Add-Ons</h2>
-        <div class="grid md:grid-cols-3 gap-4">
-          <label class="flex items-center justify-between p-4 bg-[#0b1a13] border border-[#183125] rounded-xl cursor-pointer hover:border-[#a3824c]/40 transition">
+        <div class="grid md:grid-cols-2 gap-4">
+          <label id="addonExterior" class="flex items-center justify-between p-4 bg-[#0b1a13] border border-[#183125] rounded-xl cursor-pointer hover:border-[#a3824c]/40 transition">
+            <div class="flex items-center space-x-3">
+              <input type="checkbox" value="Exterior Detail" data-price="89" onchange="updateTotal()" class="addon-checkbox h-4 w-4 text-[#a3824c] rounded border-[#183125] bg-[#07120d]">
+              <div>
+                <p class="font-semibold text-zinc-200 text-sm">Exterior Detail</p>
+                <p class="text-xs text-emerald-200/60">Hand wash &amp; wax, wheels, clay bar &amp; windows</p>
+              </div>
+            </div>
+            <span class="text-sm font-bold text-[#d4b37f] ml-2">+$89</span>
+          </label>
+
+          <label id="addonOzone" class="flex items-center justify-between p-4 bg-[#0b1a13] border border-[#183125] rounded-xl cursor-pointer hover:border-[#a3824c]/40 transition">
             <div class="flex items-center space-x-3">
               <input type="checkbox" value="Ozone Treatment" data-price="59" onchange="updateTotal()" class="addon-checkbox h-4 w-4 text-[#a3824c] rounded border-[#183125] bg-[#07120d]">
               <div>
@@ -173,6 +184,9 @@
             <span class="text-sm font-bold text-[#d4b37f] ml-2">+$60</span>
           </label>
         </div>
+        <p id="includedAddonNote" class="hidden text-xs text-emerald-200/60 mt-3 border-t border-[#183125] pt-3">
+          Already included in <span class="text-[#d4b37f]" id="includedAddonPackage">this package</span>: <span id="includedAddonList">ozone treatment</span>. Removed from the add-ons above so nothing is charged twice.
+        </p>
       </section>
 
       <!-- Step 4: Calendar Date & Time -->
@@ -291,6 +305,31 @@
 
     function isCeramicPackage(service) {
       return CERAMIC_PACKAGE.test((service && service.name) || '');
+    }
+
+    // Packages that already cover the exterior, so the Exterior Detail add-on
+    // is blocked out for them. Interior-only work (Interior Detail, Ultimate
+    // Odor Removal) is not listed, so the add-on stays available there.
+    const EXTERIOR_INCLUSIVE = /exterior\s*detail|premium\s*detail|sale-?\s*ready|executive/i;
+
+    function includesExteriorDetail(service) {
+      if (!service || !service.name) return false;
+      // Coatings are paint work, so the exterior detail comes with the job.
+      return EXTERIOR_INCLUSIVE.test(service.name) || isCeramicPackage(service);
+    }
+
+    // Package display order. Anything unlisted keeps its service-library order
+    // and falls in behind these, ahead of the ceramic coating card.
+    const PACKAGE_ORDER = [
+      /premium\s*detail/i,
+      /interior\s*detail/i,
+      /exterior\s*detail/i,
+      /sale-?\s*ready/i
+    ];
+
+    function packageRank(service) {
+      const idx = PACKAGE_ORDER.findIndex((re) => re.test((service && service.name) || ''));
+      return idx === -1 ? PACKAGE_ORDER.length : idx;
     }
 
     // Coverage length drives the tier order, e.g. "7-Year Ceramic Coating" -> 7.
@@ -523,21 +562,7 @@
           }
         });
         
-        const rawServices = await response.json();
-        
-        // Custom sort: Premium Detail first, Interior Detail second, then others
-        servicesList = rawServices.sort((a, b) => {
-          const nameA = a.name.toLowerCase();
-          const nameB = b.name.toLowerCase();
-
-          const getRank = (name) => {
-            if (name.includes('premium')) return 1;
-            if (name.includes('interior')) return 2;
-            return 3;
-          };
-
-          return getRank(nameA) - getRank(nameB);
-        });
+        servicesList = await response.json();
 
         container.innerHTML = '';
 
@@ -550,6 +575,7 @@
 
         bookable
           .filter((s) => !isCeramicPackage(s))
+          .sort((a, b) => packageRank(a) - packageRank(b))
           .forEach((s, idx) => {
             const isSelectedDefault = (idx === 0);
             container.appendChild(buildPackageCard(s, isSelectedDefault));
@@ -559,6 +585,7 @@
         // The coatings collapse into one card with a coverage-tier picker.
         if (coatingTiers.length) container.appendChild(buildCoatingCard(coatingTiers));
 
+        syncIncludedAddons();
         updateTotal();
       } catch (err) {
         container.innerHTML = `<p class="text-xs text-red-400 col-span-3">Error loading services: ${err.message}</p>`;
@@ -643,6 +670,43 @@
       card.querySelector('.coating-description').textContent = card.dataset.introText;
     }
 
+    // Add-ons a package can already cover. When the selected package includes
+    // one, the add-on is blocked out so it cannot be bought a second time.
+    const INCLUDED_ADDONS = [
+      { id: 'addonExterior', label: 'exterior detail', includedBy: includesExteriorDetail },
+      { id: 'addonOzone', label: 'ozone treatment', includedBy: (s) => /odor/i.test(s.name) }
+    ];
+
+    function syncIncludedAddons() {
+      const covered = [];
+
+      INCLUDED_ADDONS.forEach(({ id, label, includedBy }) => {
+        const wrap = document.getElementById(id);
+        if (!wrap) return;
+        const isIncluded = !!selectedService && includedBy(selectedService);
+
+        wrap.classList.toggle('hidden', isIncluded);
+        if (isIncluded) {
+          wrap.querySelector('.addon-checkbox').checked = false;
+          covered.push(label);
+        }
+      });
+
+      const note = document.getElementById('includedAddonNote');
+      note.classList.toggle('hidden', !covered.length);
+      if (covered.length) {
+        document.getElementById('includedAddonPackage').innerText = selectedService.name;
+        document.getElementById('includedAddonList').innerText = covered.join(' and ');
+      }
+    }
+
+    // Blocked-out add-ons stay checked-free, but skip them anyway so a hidden
+    // box can never reach the total or the booking record.
+    function checkedAddons() {
+      return Array.from(document.querySelectorAll('.addon-checkbox:checked'))
+        .filter((cb) => !cb.closest('label').classList.contains('hidden'));
+    }
+
     function selectService(service, element) {
       selectedService = service;
       document.querySelectorAll('.service-card').forEach(c => {
@@ -652,13 +716,14 @@
       element.classList.add('selected-card', 'border-[#a3824c]');
       element.classList.remove('border-[#183125]', 'bg-[#0b1a13]');
       syncCoatingCard();
+      syncIncludedAddons();
       updateTotal();
     }
 
     function updateTotal() {
       if (!selectedService) return;
       let total = parseFloat(selectedService.price);
-      document.querySelectorAll('.addon-checkbox:checked').forEach(cb => {
+      checkedAddons().forEach(cb => {
         total += parseFloat(cb.getAttribute('data-price'));
       });
       document.getElementById('displayTotal').innerText = '$' + total;
@@ -704,8 +769,7 @@
         console.error('Availability check error:', err);
       }
 
-      const addons = [];
-      document.querySelectorAll('.addon-checkbox:checked').forEach(cb => addons.push(cb.value));
+      const addons = checkedAddons().map(cb => cb.value);
 
       const addressInput = document.getElementById('custAddress');
       const clientAddress = (currentMode === 'mobile' && addressInput && addressInput.value) 

@@ -110,7 +110,18 @@
       <!-- Step 2: Add-Ons -->
       <section class="bg-[#07120d] border border-[#183125] rounded-2xl p-6 shadow-xl">
         <h2 class="text-xl font-normal text-white mb-4 border-b border-[#183125] pb-2">2. Optional Add-Ons</h2>
-        <div class="grid md:grid-cols-3 gap-4">
+        <div class="grid md:grid-cols-2 gap-4">
+          <label id="addonExterior" class="flex items-center justify-between p-4 bg-[#0b1a13] border border-[#183125] rounded-xl cursor-pointer hover:border-[#a3824c]/40 transition">
+            <div class="flex items-center space-x-3">
+              <input type="checkbox" value="Exterior Detail" data-price="89" onchange="updateTotal()" class="addon-checkbox h-4 w-4 text-[#a3824c] rounded border-[#183125] bg-[#07120d]">
+              <div>
+                <p class="font-semibold text-zinc-200 text-sm">Exterior Detail</p>
+                <p class="text-xs text-emerald-200/60">Hand wash &amp; wax, wheel &amp; tire restoration, clay bar &amp; windows</p>
+              </div>
+            </div>
+            <span class="text-sm font-bold text-[#d4b37f] ml-2">+$89</span>
+          </label>
+
           <label id="addonOzone" class="flex items-center justify-between p-4 bg-[#0b1a13] border border-[#183125] rounded-xl cursor-pointer hover:border-[#a3824c]/40 transition">
             <div class="flex items-center space-x-3">
               <input type="checkbox" value="Ozone Treatment" data-price="59" onchange="updateTotal()" class="addon-checkbox h-4 w-4 text-[#a3824c] rounded border-[#183125] bg-[#07120d]">
@@ -144,8 +155,8 @@
             <span class="text-sm font-bold text-[#d4b37f] ml-2">+$60</span>
           </label>
         </div>
-        <p id="ozoneIncludedNote" class="hidden text-xs text-emerald-200/60 mt-3 border-t border-[#183125] pt-3">
-          Ozone treatment is already included in <span class="text-[#d4b37f]" id="ozoneIncludedPackage">this package</span>, so it has been removed from add-ons.
+        <p id="includedAddonNote" class="hidden text-xs text-emerald-200/60 mt-3 border-t border-[#183125] pt-3">
+          Already included in <span class="text-[#d4b37f]" id="includedAddonPackage">this package</span>: <span id="includedAddonList">ozone treatment</span>. Removed from the add-ons above so nothing is charged twice.
         </p>
       </section>
 
@@ -342,6 +353,31 @@
 
     function isCeramicPackage(service) {
       return CERAMIC_PACKAGE.test((service && service.name) || '');
+    }
+
+    // Packages that already cover the exterior, so the Exterior Detail add-on
+    // is blocked out for them. Interior-only work (Interior Detail, Ultimate
+    // Odor Removal) is not listed, so the add-on stays available there.
+    const EXTERIOR_INCLUSIVE = /exterior\s*detail|premium\s*detail|sale-?\s*ready|executive/i;
+
+    function includesExteriorDetail(service) {
+      if (!service || !service.name) return false;
+      // Coatings are paint work, so the exterior detail comes with the job.
+      return EXTERIOR_INCLUSIVE.test(service.name) || isCeramicPackage(service);
+    }
+
+    // Package display order. Anything unlisted keeps its service-library order
+    // and falls in behind these, ahead of the ceramic coating card.
+    const PACKAGE_ORDER = [
+      /premium\s*detail/i,
+      /interior\s*detail/i,
+      /exterior\s*detail/i,
+      /sale-?\s*ready/i
+    ];
+
+    function packageRank(service) {
+      const idx = PACKAGE_ORDER.findIndex((re) => re.test((service && service.name) || ''));
+      return idx === -1 ? PACKAGE_ORDER.length : idx;
     }
 
     // Coverage length drives the tier order, e.g. "7-Year Ceramic Coating" -> 7.
@@ -681,12 +717,6 @@
         servicesList = await response.json();
         if (!Array.isArray(servicesList) || !servicesList.length) throw new Error('No packages returned');
 
-        const idxPremium = servicesList.findIndex(s => s.name.toLowerCase().includes('premium detail'));
-        const idxInterior = servicesList.findIndex(s => s.name.toLowerCase().includes('interior detail'));
-        if (idxPremium !== -1 && idxInterior !== -1 && idxPremium > idxInterior) {
-          [servicesList[idxPremium], servicesList[idxInterior]] = [servicesList[idxInterior], servicesList[idxPremium]];
-        }
-
         container.innerHTML = '';
 
         // servicesList stays the full library so availability lookups can still
@@ -698,6 +728,7 @@
 
         bookable
           .filter((s) => !isCeramicPackage(s))
+          .sort((a, b) => packageRank(a) - packageRank(b))
           .forEach((s) => container.appendChild(buildPackageCard(s)));
 
         // The coatings collapse into one card with a coverage-tier picker.
@@ -824,7 +855,7 @@
       element.classList.remove('border-[#183125]', 'bg-[#0b1a13]');
 
       syncCoatingCard();
-      syncOzoneAddon();
+      syncIncludedAddons();
       updateTotal();
 
       if (selectedSlot && slotIsTaken(selectedCalDateString, selectedSlot.minutes)) {
@@ -842,17 +873,33 @@
       updateSubmitState();
     }
 
-    function syncOzoneAddon() {
-      const wrap = document.getElementById('addonOzone');
-      const note = document.getElementById('ozoneIncludedNote');
-      const checkbox = wrap.querySelector('.addon-checkbox');
-      const includesOzone = !!selectedService && /odor/i.test(selectedService.name);
+    // Add-ons a package can already cover. When the selected package includes
+    // one, the add-on is blocked out so it cannot be bought a second time.
+    const INCLUDED_ADDONS = [
+      { id: 'addonExterior', label: 'exterior detail', includedBy: includesExteriorDetail },
+      { id: 'addonOzone', label: 'ozone treatment', includedBy: (s) => /odor/i.test(s.name) }
+    ];
 
-      wrap.classList.toggle('hidden', includesOzone);
-      note.classList.toggle('hidden', !includesOzone);
-      if (includesOzone) {
-        checkbox.checked = false;
-        document.getElementById('ozoneIncludedPackage').innerText = selectedService.name;
+    function syncIncludedAddons() {
+      const covered = [];
+
+      INCLUDED_ADDONS.forEach(({ id, label, includedBy }) => {
+        const wrap = document.getElementById(id);
+        if (!wrap) return;
+        const isIncluded = !!selectedService && includedBy(selectedService);
+
+        wrap.classList.toggle('hidden', isIncluded);
+        if (isIncluded) {
+          wrap.querySelector('.addon-checkbox').checked = false;
+          covered.push(label);
+        }
+      });
+
+      const note = document.getElementById('includedAddonNote');
+      note.classList.toggle('hidden', !covered.length);
+      if (covered.length) {
+        document.getElementById('includedAddonPackage').innerText = selectedService.name;
+        document.getElementById('includedAddonList').innerText = covered.join(' and ');
       }
     }
 
