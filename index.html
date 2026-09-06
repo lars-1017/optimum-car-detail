@@ -331,6 +331,30 @@
       return /premium\s*detail|interior\s*detail/i.test(service.name);
     }
 
+    // Retired package: the row stays in the service library so historical
+    // bookings still resolve by id, but it is no longer offered for booking.
+    const RETIRED_PACKAGE = /diamond\s*detail\s*membership/i;
+    const CERAMIC_PACKAGE = /ceramic\s*coating/i;
+
+    function isRetiredPackage(service) {
+      return RETIRED_PACKAGE.test((service && service.name) || '');
+    }
+
+    function isCeramicPackage(service) {
+      return CERAMIC_PACKAGE.test((service && service.name) || '');
+    }
+
+    // Coverage length drives the tier order, e.g. "7-Year Ceramic Coating" -> 7.
+    function coatingYears(service) {
+      const match = /(\d+)\s*-?\s*year/i.exec((service && service.name) || '');
+      return match ? parseInt(match[1], 10) : Number.MAX_SAFE_INTEGER;
+    }
+
+    function coatingTierLabel(service) {
+      const years = coatingYears(service);
+      return years === Number.MAX_SAFE_INTEGER ? service.name : `${years}-Year`;
+    }
+
     function slotsForDate(dateStr) {
       const dayOfWeek = new Date(dateStr + 'T00:00:00').getDay();
       const slots = [];
@@ -665,30 +689,19 @@
 
         container.innerHTML = '';
 
-        servicesList.forEach((s, idx) => {
-          const isExec = s.name.toLowerCase().includes('executive');
-          const isTracked = isTrackedDurationPackage(s);
+        // servicesList stays the full library so availability lookups can still
+        // resolve the duration of a booking made against a retired package.
+        const bookable = servicesList.filter((s) => !isRetiredPackage(s));
+        const coatingTiers = bookable
+          .filter(isCeramicPackage)
+          .sort((a, b) => coatingYears(a) - coatingYears(b));
 
-          const durationTag = (isTracked && s.duration_hours)
-            ? `<p class="text-xs text-emerald-200/50 mt-1">Duration: ~${s.duration_hours} Hours</p>`
-            : '';
+        bookable
+          .filter((s) => !isCeramicPackage(s))
+          .forEach((s) => container.appendChild(buildPackageCard(s)));
 
-          const label = document.createElement('label');
-          label.className = 'service-card relative block border-2 border-[#183125] bg-[#0b1a13] rounded-xl p-5 cursor-pointer hover:border-[#a3824c] transition focus-within:ring-2 focus-within:ring-[#a3824c]';
-          label.innerHTML = `
-            <input type="radio" name="package" class="sr-only" value="${idx}">
-            ${isExec ? '<span class="absolute -top-3 right-4 bg-[#a3824c] text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase">Executive Tier</span>' : ''}
-            <h3 class="font-normal text-lg text-zinc-100">${s.name}</h3>
-            <p class="text-2xl font-normal text-[#d4b37f] mt-1 serif-heading">$${s.price}</p>
-            ${durationTag}
-            <p class="text-xs text-emerald-200/70 mt-3 border-t border-[#183125] pt-2">${s.description || ''}</p>
-          `;
-
-          const radio = label.querySelector('input');
-          radio.addEventListener('change', () => selectService(s, label));
-
-          container.appendChild(label);
-        });
+        // The coatings collapse into one card with a coverage-tier picker.
+        if (coatingTiers.length) container.appendChild(buildCoatingCard(coatingTiers));
 
         updateTotal();
         updateSubmitState();
@@ -707,6 +720,99 @@
       }
     }
 
+    function buildPackageCard(service) {
+      const isExec = /executive/i.test(service.name || '');
+      const isTracked = isTrackedDurationPackage(service);
+
+      const durationTag = (isTracked && service.duration_hours)
+        ? `<p class="text-xs text-emerald-200/50 mt-1">Duration: ~${service.duration_hours} Hours</p>`
+        : '';
+
+      const label = document.createElement('label');
+      label.className = 'service-card relative block border-2 border-[#183125] bg-[#0b1a13] rounded-xl p-5 cursor-pointer hover:border-[#a3824c] transition focus-within:ring-2 focus-within:ring-[#a3824c]';
+      label.innerHTML = `
+        <input type="radio" name="package" class="sr-only">
+        ${isExec ? '<span class="absolute -top-3 right-4 bg-[#a3824c] text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase">Executive Tier</span>' : ''}
+        <h3 class="font-normal text-lg text-zinc-100">${service.name}</h3>
+        <p class="text-2xl font-normal text-[#d4b37f] mt-1 serif-heading">$${service.price}</p>
+        ${durationTag}
+        <p class="text-xs text-emerald-200/70 mt-3 border-t border-[#183125] pt-2">${service.description || ''}</p>
+      `;
+
+      label.querySelector('input').addEventListener('change', () => selectService(service, label));
+      return label;
+    }
+
+    function buildCoatingCard(tiers) {
+      const fromLabel = `From $${Math.min(...tiers.map((t) => parseFloat(t.price)))}`;
+      const introText = 'Pick the coverage length that matches how long you plan to keep the vehicle. Every tier is a high-gloss, hydrophobic paint protection layer.';
+
+      const card = document.createElement('div');
+      card.id = 'coatingCard';
+      card.className = 'service-card relative block border-2 border-[#183125] bg-[#0b1a13] rounded-xl p-5 md:col-span-3 transition focus-within:ring-2 focus-within:ring-[#a3824c]';
+      card.dataset.fromLabel = fromLabel;
+      card.dataset.introText = introText;
+
+      card.innerHTML = `
+        <span class="absolute -top-3 right-4 bg-[#a3824c] text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase">Paint Protection</span>
+        <div class="flex flex-wrap items-baseline justify-between gap-x-3">
+          <h3 class="font-normal text-lg text-zinc-100">Ceramic Coating</h3>
+          <p class="coating-price text-2xl font-normal text-[#d4b37f] serif-heading">${fromLabel}</p>
+        </div>
+        <p class="text-xs text-emerald-200/60 mt-1">Choose a coverage tier to select this package.</p>
+        <div class="grid sm:grid-cols-3 gap-3 mt-4" role="radiogroup" aria-label="Ceramic coating coverage tier">
+          ${tiers.map((tier, i) => `
+            <label class="coating-tier block border-2 border-[#183125] bg-[#07120d] rounded-xl p-4 cursor-pointer hover:border-[#a3824c] transition focus-within:ring-2 focus-within:ring-[#a3824c]">
+              <input type="radio" name="coatingTier" class="coating-tier-input sr-only" value="${i}">
+              <p class="text-[10px] font-bold uppercase tracking-wider text-emerald-200/50">Tier ${i + 1}</p>
+              <p class="font-normal text-base text-zinc-100 mt-0.5">${coatingTierLabel(tier)} Coverage</p>
+              <p class="text-xl font-normal text-[#d4b37f] serif-heading mt-1">$${tier.price}</p>
+            </label>
+          `).join('')}
+        </div>
+        <p class="coating-description text-xs text-emerald-200/70 mt-4 border-t border-[#183125] pt-3">${introText}</p>
+      `;
+
+      card.querySelectorAll('.coating-tier-input').forEach((input, i) => {
+        input.addEventListener('change', () => {
+          if (!input.checked) return;
+          // The tiers are their own radio group, so clear the package group by
+          // hand rather than parking a hidden radio inside this card.
+          document
+            .querySelectorAll('#serviceContainer input[name="package"]')
+            .forEach((radio) => { radio.checked = false; });
+          highlightCoatingTier(card, i);
+          card.querySelector('.coating-price').textContent = `$${tiers[i].price}`;
+          card.querySelector('.coating-description').textContent = tiers[i].description || '';
+          selectService(tiers[i], card);
+        });
+      });
+
+      return card;
+    }
+
+    function highlightCoatingTier(card, activeIndex) {
+      card.querySelectorAll('.coating-tier').forEach((tier, i) => {
+        const active = i === activeIndex;
+        tier.classList.toggle('border-[#a3824c]', active);
+        tier.classList.toggle('border-[#183125]', !active);
+        tier.classList.toggle('bg-[#0b1a13]', active);
+        tier.classList.toggle('bg-[#07120d]', !active);
+      });
+    }
+
+    // Selecting any other package drops the coating card back to its unpicked state.
+    function syncCoatingCard() {
+      const card = document.getElementById('coatingCard');
+      if (!card) return;
+      if (selectedService && isCeramicPackage(selectedService)) return;
+
+      card.querySelectorAll('.coating-tier-input').forEach((input) => { input.checked = false; });
+      highlightCoatingTier(card, -1);
+      card.querySelector('.coating-price').textContent = card.dataset.fromLabel;
+      card.querySelector('.coating-description').textContent = card.dataset.introText;
+    }
+
     function selectService(service, element) {
       selectedService = service;
 
@@ -717,6 +823,7 @@
       element.classList.add('selected-card', 'border-[#a3824c]');
       element.classList.remove('border-[#183125]', 'bg-[#0b1a13]');
 
+      syncCoatingCard();
       syncOzoneAddon();
       updateTotal();
 

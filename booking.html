@@ -279,6 +279,30 @@
 
     let servicesList = [];
     let selectedService = null;
+
+    // Retired package: the row stays in the service library so historical
+    // bookings still resolve by id, but it is no longer offered for booking.
+    const RETIRED_PACKAGE = /diamond\s*detail\s*membership/i;
+    const CERAMIC_PACKAGE = /ceramic\s*coating/i;
+
+    function isRetiredPackage(service) {
+      return RETIRED_PACKAGE.test((service && service.name) || '');
+    }
+
+    function isCeramicPackage(service) {
+      return CERAMIC_PACKAGE.test((service && service.name) || '');
+    }
+
+    // Coverage length drives the tier order, e.g. "7-Year Ceramic Coating" -> 7.
+    function coatingYears(service) {
+      const match = /(\d+)\s*-?\s*year/i.exec((service && service.name) || '');
+      return match ? parseInt(match[1], 10) : Number.MAX_SAFE_INTEGER;
+    }
+
+    function coatingTierLabel(service) {
+      const years = coatingYears(service);
+      return years === Number.MAX_SAFE_INTEGER ? service.name : `${years}-Year`;
+    }
     let currentMode = 'shop';
     
     let currentDate = new Date();
@@ -517,32 +541,106 @@
 
         container.innerHTML = '';
 
-        servicesList.forEach((s, idx) => {
-          const card = document.createElement('div');
-          const isSelectedDefault = (idx === 0);
-          
-          card.className = `service-card cursor-pointer border-2 ${isSelectedDefault ? 'border-[#a3824c] selected-card' : 'border-[#183125] bg-[#0b1a13]'} rounded-xl p-5 hover:border-[#a3824c] transition relative`;
-          card.onclick = () => selectService(s, card);
+        // servicesList stays the full library so a booking made against a
+        // retired package can still be resolved by id.
+        const bookable = servicesList.filter((s) => !isRetiredPackage(s));
+        const coatingTiers = bookable
+          .filter(isCeramicPackage)
+          .sort((a, b) => coatingYears(a) - coatingYears(b));
 
-          card.innerHTML = `
-            ${idx === 0 ? '<span class="absolute -top-3 right-4 bg-[#a3824c] text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase">Most Popular</span>' : ''}
-            <h3 class="font-normal text-lg text-zinc-100">${s.name}</h3>
-            <p class="text-2xl font-normal text-[#d4b37f] mt-1 serif-heading">$${s.price}</p>
-            <p class="text-xs text-emerald-200/50 mt-1">Duration: ~${s.duration_hours} Hours</p>
-            <p class="text-xs text-emerald-200/70 mt-3 border-t border-[#183125] pt-2">${s.description || ''}</p>
-          `;
+        bookable
+          .filter((s) => !isCeramicPackage(s))
+          .forEach((s, idx) => {
+            const isSelectedDefault = (idx === 0);
+            container.appendChild(buildPackageCard(s, isSelectedDefault));
+            if (isSelectedDefault) selectedService = s;
+          });
 
-          container.appendChild(card);
-
-          if (isSelectedDefault) {
-            selectedService = s;
-          }
-        });
+        // The coatings collapse into one card with a coverage-tier picker.
+        if (coatingTiers.length) container.appendChild(buildCoatingCard(coatingTiers));
 
         updateTotal();
       } catch (err) {
         container.innerHTML = `<p class="text-xs text-red-400 col-span-3">Error loading services: ${err.message}</p>`;
       }
+    }
+
+    function buildPackageCard(service, isSelectedDefault) {
+      const card = document.createElement('div');
+      card.className = `service-card cursor-pointer border-2 ${isSelectedDefault ? 'border-[#a3824c] selected-card' : 'border-[#183125] bg-[#0b1a13]'} rounded-xl p-5 hover:border-[#a3824c] transition relative`;
+      card.onclick = () => selectService(service, card);
+
+      card.innerHTML = `
+        ${isSelectedDefault ? '<span class="absolute -top-3 right-4 bg-[#a3824c] text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase">Most Popular</span>' : ''}
+        <h3 class="font-normal text-lg text-zinc-100">${service.name}</h3>
+        <p class="text-2xl font-normal text-[#d4b37f] mt-1 serif-heading">$${service.price}</p>
+        <p class="text-xs text-emerald-200/50 mt-1">Duration: ~${service.duration_hours} Hours</p>
+        <p class="text-xs text-emerald-200/70 mt-3 border-t border-[#183125] pt-2">${service.description || ''}</p>
+      `;
+
+      return card;
+    }
+
+    function buildCoatingCard(tiers) {
+      const fromLabel = `From $${Math.min(...tiers.map((t) => parseFloat(t.price)))}`;
+      const introText = 'Pick the coverage length that matches how long you plan to keep the vehicle. Every tier is a high-gloss, hydrophobic paint protection layer.';
+
+      const card = document.createElement('div');
+      card.id = 'coatingCard';
+      card.className = 'service-card border-2 border-[#183125] bg-[#0b1a13] rounded-xl p-5 md:col-span-3 transition relative';
+      card.dataset.fromLabel = fromLabel;
+      card.dataset.introText = introText;
+
+      card.innerHTML = `
+        <span class="absolute -top-3 right-4 bg-[#a3824c] text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase">Paint Protection</span>
+        <div class="flex flex-wrap items-baseline justify-between gap-x-3">
+          <h3 class="font-normal text-lg text-zinc-100">Ceramic Coating</h3>
+          <p class="coating-price text-2xl font-normal text-[#d4b37f] serif-heading">${fromLabel}</p>
+        </div>
+        <p class="text-xs text-emerald-200/60 mt-1">Choose a coverage tier to select this package.</p>
+        <div class="grid sm:grid-cols-3 gap-3 mt-4">
+          ${tiers.map((tier, i) => `
+            <div class="coating-tier cursor-pointer border-2 border-[#183125] bg-[#07120d] rounded-xl p-4 hover:border-[#a3824c] transition" data-tier="${i}">
+              <p class="text-[10px] font-bold uppercase tracking-wider text-emerald-200/50">Tier ${i + 1}</p>
+              <p class="font-normal text-base text-zinc-100 mt-0.5">${coatingTierLabel(tier)} Coverage</p>
+              <p class="text-xl font-normal text-[#d4b37f] serif-heading mt-1">$${tier.price}</p>
+            </div>
+          `).join('')}
+        </div>
+        <p class="coating-description text-xs text-emerald-200/70 mt-4 border-t border-[#183125] pt-3">${introText}</p>
+      `;
+
+      card.querySelectorAll('.coating-tier').forEach((tierEl, i) => {
+        tierEl.onclick = () => {
+          highlightCoatingTier(card, i);
+          card.querySelector('.coating-price').textContent = `$${tiers[i].price}`;
+          card.querySelector('.coating-description').textContent = tiers[i].description || '';
+          selectService(tiers[i], card);
+        };
+      });
+
+      return card;
+    }
+
+    function highlightCoatingTier(card, activeIndex) {
+      card.querySelectorAll('.coating-tier').forEach((tier, i) => {
+        const active = i === activeIndex;
+        tier.classList.toggle('border-[#a3824c]', active);
+        tier.classList.toggle('border-[#183125]', !active);
+        tier.classList.toggle('bg-[#0b1a13]', active);
+        tier.classList.toggle('bg-[#07120d]', !active);
+      });
+    }
+
+    // Selecting any other package drops the coating card back to its unpicked state.
+    function syncCoatingCard() {
+      const card = document.getElementById('coatingCard');
+      if (!card) return;
+      if (selectedService && isCeramicPackage(selectedService)) return;
+
+      highlightCoatingTier(card, -1);
+      card.querySelector('.coating-price').textContent = card.dataset.fromLabel;
+      card.querySelector('.coating-description').textContent = card.dataset.introText;
     }
 
     function selectService(service, element) {
@@ -553,6 +651,7 @@
       });
       element.classList.add('selected-card', 'border-[#a3824c]');
       element.classList.remove('border-[#183125]', 'bg-[#0b1a13]');
+      syncCoatingCard();
       updateTotal();
     }
 
