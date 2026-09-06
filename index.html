@@ -110,7 +110,18 @@
       <!-- Step 2: Add-Ons -->
       <section class="bg-[#07120d] border border-[#183125] rounded-2xl p-6 shadow-xl">
         <h2 class="text-xl font-normal text-white mb-4 border-b border-[#183125] pb-2">2. Optional Add-Ons</h2>
-        <div class="grid md:grid-cols-3 gap-4">
+        <div class="grid md:grid-cols-2 gap-4">
+          <label id="addonExterior" class="flex items-center justify-between p-4 bg-[#0b1a13] border border-[#183125] rounded-xl cursor-pointer hover:border-[#a3824c]/40 transition">
+            <div class="flex items-center space-x-3">
+              <input type="checkbox" value="Exterior Detail" data-price="89" onchange="updateTotal()" class="addon-checkbox h-4 w-4 text-[#a3824c] rounded border-[#183125] bg-[#07120d]">
+              <div>
+                <p class="font-semibold text-zinc-200 text-sm">Exterior Detail</p>
+                <p class="text-xs text-emerald-200/60">Hand wash &amp; wax, wheel &amp; tire restoration, clay bar &amp; windows</p>
+              </div>
+            </div>
+            <span class="text-sm font-bold text-[#d4b37f] ml-2">+$89</span>
+          </label>
+
           <label id="addonOzone" class="flex items-center justify-between p-4 bg-[#0b1a13] border border-[#183125] rounded-xl cursor-pointer hover:border-[#a3824c]/40 transition">
             <div class="flex items-center space-x-3">
               <input type="checkbox" value="Ozone Treatment" data-price="59" onchange="updateTotal()" class="addon-checkbox h-4 w-4 text-[#a3824c] rounded border-[#183125] bg-[#07120d]">
@@ -144,8 +155,8 @@
             <span class="text-sm font-bold text-[#d4b37f] ml-2">+$60</span>
           </label>
         </div>
-        <p id="ozoneIncludedNote" class="hidden text-xs text-emerald-200/60 mt-3 border-t border-[#183125] pt-3">
-          Ozone treatment is already included in <span class="text-[#d4b37f]" id="ozoneIncludedPackage">this package</span>, so it has been removed from add-ons.
+        <p id="includedAddonNote" class="hidden text-xs text-emerald-200/60 mt-3 border-t border-[#183125] pt-3">
+          Already included in <span class="text-[#d4b37f]" id="includedAddonPackage">this package</span>: <span id="includedAddonList">ozone treatment</span>. Removed from the add-ons above so nothing is charged twice.
         </p>
       </section>
 
@@ -329,6 +340,55 @@
     function isTrackedDurationPackage(service) {
       if (!service || !service.name) return false;
       return /premium\s*detail|interior\s*detail/i.test(service.name);
+    }
+
+    // Retired package: the row stays in the service library so historical
+    // bookings still resolve by id, but it is no longer offered for booking.
+    const RETIRED_PACKAGE = /diamond\s*detail\s*membership/i;
+    const CERAMIC_PACKAGE = /ceramic\s*coating/i;
+
+    function isRetiredPackage(service) {
+      return RETIRED_PACKAGE.test((service && service.name) || '');
+    }
+
+    function isCeramicPackage(service) {
+      return CERAMIC_PACKAGE.test((service && service.name) || '');
+    }
+
+    // Packages that already cover the exterior, so the Exterior Detail add-on
+    // is blocked out for them. Interior-only work (Interior Detail, Ultimate
+    // Odor Removal) is not listed, so the add-on stays available there.
+    const EXTERIOR_INCLUSIVE = /exterior\s*detail|premium\s*detail|sale-?\s*ready|executive/i;
+
+    function includesExteriorDetail(service) {
+      if (!service || !service.name) return false;
+      // Coatings are paint work, so the exterior detail comes with the job.
+      return EXTERIOR_INCLUSIVE.test(service.name) || isCeramicPackage(service);
+    }
+
+    // Package display order. Anything unlisted keeps its service-library order
+    // and falls in behind these, ahead of the ceramic coating card.
+    const PACKAGE_ORDER = [
+      /premium\s*detail/i,
+      /interior\s*detail/i,
+      /exterior\s*detail/i,
+      /sale-?\s*ready/i
+    ];
+
+    function packageRank(service) {
+      const idx = PACKAGE_ORDER.findIndex((re) => re.test((service && service.name) || ''));
+      return idx === -1 ? PACKAGE_ORDER.length : idx;
+    }
+
+    // Coverage length drives the tier order, e.g. "7-Year Ceramic Coating" -> 7.
+    function coatingYears(service) {
+      const match = /(\d+)\s*-?\s*year/i.exec((service && service.name) || '');
+      return match ? parseInt(match[1], 10) : Number.MAX_SAFE_INTEGER;
+    }
+
+    function coatingTierLabel(service) {
+      const years = coatingYears(service);
+      return years === Number.MAX_SAFE_INTEGER ? service.name : `${years}-Year`;
     }
 
     function slotsForDate(dateStr) {
@@ -657,38 +717,22 @@
         servicesList = await response.json();
         if (!Array.isArray(servicesList) || !servicesList.length) throw new Error('No packages returned');
 
-        const idxPremium = servicesList.findIndex(s => s.name.toLowerCase().includes('premium detail'));
-        const idxInterior = servicesList.findIndex(s => s.name.toLowerCase().includes('interior detail'));
-        if (idxPremium !== -1 && idxInterior !== -1 && idxPremium > idxInterior) {
-          [servicesList[idxPremium], servicesList[idxInterior]] = [servicesList[idxInterior], servicesList[idxPremium]];
-        }
-
         container.innerHTML = '';
 
-        servicesList.forEach((s, idx) => {
-          const isExec = s.name.toLowerCase().includes('executive');
-          const isTracked = isTrackedDurationPackage(s);
+        // servicesList stays the full library so availability lookups can still
+        // resolve the duration of a booking made against a retired package.
+        const bookable = servicesList.filter((s) => !isRetiredPackage(s));
+        const coatingTiers = bookable
+          .filter(isCeramicPackage)
+          .sort((a, b) => coatingYears(a) - coatingYears(b));
 
-          const durationTag = (isTracked && s.duration_hours)
-            ? `<p class="text-xs text-emerald-200/50 mt-1">Duration: ~${s.duration_hours} Hours</p>`
-            : '';
+        bookable
+          .filter((s) => !isCeramicPackage(s))
+          .sort((a, b) => packageRank(a) - packageRank(b))
+          .forEach((s) => container.appendChild(buildPackageCard(s)));
 
-          const label = document.createElement('label');
-          label.className = 'service-card relative block border-2 border-[#183125] bg-[#0b1a13] rounded-xl p-5 cursor-pointer hover:border-[#a3824c] transition focus-within:ring-2 focus-within:ring-[#a3824c]';
-          label.innerHTML = `
-            <input type="radio" name="package" class="sr-only" value="${idx}">
-            ${isExec ? '<span class="absolute -top-3 right-4 bg-[#a3824c] text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase">Executive Tier</span>' : ''}
-            <h3 class="font-normal text-lg text-zinc-100">${s.name}</h3>
-            <p class="text-2xl font-normal text-[#d4b37f] mt-1 serif-heading">$${s.price}</p>
-            ${durationTag}
-            <p class="text-xs text-emerald-200/70 mt-3 border-t border-[#183125] pt-2">${s.description || ''}</p>
-          `;
-
-          const radio = label.querySelector('input');
-          radio.addEventListener('change', () => selectService(s, label));
-
-          container.appendChild(label);
-        });
+        // The coatings collapse into one card with a coverage-tier picker.
+        if (coatingTiers.length) container.appendChild(buildCoatingCard(coatingTiers));
 
         updateTotal();
         updateSubmitState();
@@ -707,6 +751,99 @@
       }
     }
 
+    function buildPackageCard(service) {
+      const isExec = /executive/i.test(service.name || '');
+      const isTracked = isTrackedDurationPackage(service);
+
+      const durationTag = (isTracked && service.duration_hours)
+        ? `<p class="text-xs text-emerald-200/50 mt-1">Duration: ~${service.duration_hours} Hours</p>`
+        : '';
+
+      const label = document.createElement('label');
+      label.className = 'service-card relative block border-2 border-[#183125] bg-[#0b1a13] rounded-xl p-5 cursor-pointer hover:border-[#a3824c] transition focus-within:ring-2 focus-within:ring-[#a3824c]';
+      label.innerHTML = `
+        <input type="radio" name="package" class="sr-only">
+        ${isExec ? '<span class="absolute -top-3 right-4 bg-[#a3824c] text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase">Executive Tier</span>' : ''}
+        <h3 class="font-normal text-lg text-zinc-100">${service.name}</h3>
+        <p class="text-2xl font-normal text-[#d4b37f] mt-1 serif-heading">$${service.price}</p>
+        ${durationTag}
+        <p class="text-xs text-emerald-200/70 mt-3 border-t border-[#183125] pt-2">${service.description || ''}</p>
+      `;
+
+      label.querySelector('input').addEventListener('change', () => selectService(service, label));
+      return label;
+    }
+
+    function buildCoatingCard(tiers) {
+      const fromLabel = `From $${Math.min(...tiers.map((t) => parseFloat(t.price)))}`;
+      const introText = 'Pick the coverage length that matches how long you plan to keep the vehicle. Every tier is a high-gloss, hydrophobic paint protection layer.';
+
+      const card = document.createElement('div');
+      card.id = 'coatingCard';
+      card.className = 'service-card relative block border-2 border-[#183125] bg-[#0b1a13] rounded-xl p-5 md:col-span-3 transition focus-within:ring-2 focus-within:ring-[#a3824c]';
+      card.dataset.fromLabel = fromLabel;
+      card.dataset.introText = introText;
+
+      card.innerHTML = `
+        <span class="absolute -top-3 right-4 bg-[#a3824c] text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase">Paint Protection</span>
+        <div class="flex flex-wrap items-baseline justify-between gap-x-3">
+          <h3 class="font-normal text-lg text-zinc-100">Ceramic Coating</h3>
+          <p class="coating-price text-2xl font-normal text-[#d4b37f] serif-heading">${fromLabel}</p>
+        </div>
+        <p class="text-xs text-emerald-200/60 mt-1">Choose a coverage tier to select this package.</p>
+        <div class="grid sm:grid-cols-3 gap-3 mt-4" role="radiogroup" aria-label="Ceramic coating coverage tier">
+          ${tiers.map((tier, i) => `
+            <label class="coating-tier block border-2 border-[#183125] bg-[#07120d] rounded-xl p-4 cursor-pointer hover:border-[#a3824c] transition focus-within:ring-2 focus-within:ring-[#a3824c]">
+              <input type="radio" name="coatingTier" class="coating-tier-input sr-only" value="${i}">
+              <p class="text-[10px] font-bold uppercase tracking-wider text-emerald-200/50">Tier ${i + 1}</p>
+              <p class="font-normal text-base text-zinc-100 mt-0.5">${coatingTierLabel(tier)} Coverage</p>
+              <p class="text-xl font-normal text-[#d4b37f] serif-heading mt-1">$${tier.price}</p>
+            </label>
+          `).join('')}
+        </div>
+        <p class="coating-description text-xs text-emerald-200/70 mt-4 border-t border-[#183125] pt-3">${introText}</p>
+      `;
+
+      card.querySelectorAll('.coating-tier-input').forEach((input, i) => {
+        input.addEventListener('change', () => {
+          if (!input.checked) return;
+          // The tiers are their own radio group, so clear the package group by
+          // hand rather than parking a hidden radio inside this card.
+          document
+            .querySelectorAll('#serviceContainer input[name="package"]')
+            .forEach((radio) => { radio.checked = false; });
+          highlightCoatingTier(card, i);
+          card.querySelector('.coating-price').textContent = `$${tiers[i].price}`;
+          card.querySelector('.coating-description').textContent = tiers[i].description || '';
+          selectService(tiers[i], card);
+        });
+      });
+
+      return card;
+    }
+
+    function highlightCoatingTier(card, activeIndex) {
+      card.querySelectorAll('.coating-tier').forEach((tier, i) => {
+        const active = i === activeIndex;
+        tier.classList.toggle('border-[#a3824c]', active);
+        tier.classList.toggle('border-[#183125]', !active);
+        tier.classList.toggle('bg-[#0b1a13]', active);
+        tier.classList.toggle('bg-[#07120d]', !active);
+      });
+    }
+
+    // Selecting any other package drops the coating card back to its unpicked state.
+    function syncCoatingCard() {
+      const card = document.getElementById('coatingCard');
+      if (!card) return;
+      if (selectedService && isCeramicPackage(selectedService)) return;
+
+      card.querySelectorAll('.coating-tier-input').forEach((input) => { input.checked = false; });
+      highlightCoatingTier(card, -1);
+      card.querySelector('.coating-price').textContent = card.dataset.fromLabel;
+      card.querySelector('.coating-description').textContent = card.dataset.introText;
+    }
+
     function selectService(service, element) {
       selectedService = service;
 
@@ -717,7 +854,8 @@
       element.classList.add('selected-card', 'border-[#a3824c]');
       element.classList.remove('border-[#183125]', 'bg-[#0b1a13]');
 
-      syncOzoneAddon();
+      syncCoatingCard();
+      syncIncludedAddons();
       updateTotal();
 
       if (selectedSlot && slotIsTaken(selectedCalDateString, selectedSlot.minutes)) {
@@ -735,17 +873,33 @@
       updateSubmitState();
     }
 
-    function syncOzoneAddon() {
-      const wrap = document.getElementById('addonOzone');
-      const note = document.getElementById('ozoneIncludedNote');
-      const checkbox = wrap.querySelector('.addon-checkbox');
-      const includesOzone = !!selectedService && /odor/i.test(selectedService.name);
+    // Add-ons a package can already cover. When the selected package includes
+    // one, the add-on is blocked out so it cannot be bought a second time.
+    const INCLUDED_ADDONS = [
+      { id: 'addonExterior', label: 'exterior detail', includedBy: includesExteriorDetail },
+      { id: 'addonOzone', label: 'ozone treatment', includedBy: (s) => /odor/i.test(s.name) }
+    ];
 
-      wrap.classList.toggle('hidden', includesOzone);
-      note.classList.toggle('hidden', !includesOzone);
-      if (includesOzone) {
-        checkbox.checked = false;
-        document.getElementById('ozoneIncludedPackage').innerText = selectedService.name;
+    function syncIncludedAddons() {
+      const covered = [];
+
+      INCLUDED_ADDONS.forEach(({ id, label, includedBy }) => {
+        const wrap = document.getElementById(id);
+        if (!wrap) return;
+        const isIncluded = !!selectedService && includedBy(selectedService);
+
+        wrap.classList.toggle('hidden', isIncluded);
+        if (isIncluded) {
+          wrap.querySelector('.addon-checkbox').checked = false;
+          covered.push(label);
+        }
+      });
+
+      const note = document.getElementById('includedAddonNote');
+      note.classList.toggle('hidden', !covered.length);
+      if (covered.length) {
+        document.getElementById('includedAddonPackage').innerText = selectedService.name;
+        document.getElementById('includedAddonList').innerText = covered.join(' and ');
       }
     }
 
