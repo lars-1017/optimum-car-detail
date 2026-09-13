@@ -38,7 +38,7 @@ function parseAppointmentDate(dateStr, timeStr) {
   if (modifier === 'PM' && hours < 12) hours += 12;
   if (modifier === 'AM' && hours === 12) hours = 0;
 
-  // Mountain Time conversion: +6 hours for Daylight Saving (Mar–Nov), +7 for Standard Time
+  // Mountain Time conversion: +6 hours MDT / +7 hours MST
   const isDST = month >= 3 && month <= 11;
   const offsetHours = isDST ? 6 : 7;
 
@@ -80,12 +80,12 @@ export default async () => {
           const startDate = parseAppointmentDate(b.booking_date, b.booking_time);
           if (!startDate || isNaN(startDate.getTime())) return;
 
-          // Default appointment duration: 2.5 hours
           const endDate = new Date(startDate.getTime() + 2.5 * 60 * 60 * 1000);
-
           const startUTC = formatICS(startDate);
           const endUTC = formatICS(endDate);
 
+          // Extract service/package details
+          const service = (b.service_name || b.service || b.package || 'Detail Service').replace(/[\\,;]/g, ' ');
           const client = (b.client_name || 'Client').replace(/[\\,;]/g, ' ');
           const vehicle = (b.vehicle_info || 'Vehicle').replace(/[\\,;]/g, ' ');
           const phone = (b.client_phone || 'N/A').replace(/[\\,;]/g, ' ');
@@ -97,14 +97,12 @@ export default async () => {
             `DTSTAMP:${nowUTC}`,
             `DTSTART:${startUTC}`,
             `DTEND:${endUTC}`,
-            `SUMMARY:Detail: ${client} (${vehicle})`,
-            `DESCRIPTION:Phone: ${phone}\\nNotes: ${notes}`,
+            `SUMMARY:${service}: ${client} (${vehicle})`,
+            `DESCRIPTION:Service: ${service}\\nPhone: ${phone}\\nNotes: ${notes}`,
             `STATUS:CONFIRMED`,
             'END:VEVENT'
           );
-        } catch (_) {
-          // Skip any individual row formatting issue without breaking the feed
-        }
+        } catch (_) {}
       });
     }
 
