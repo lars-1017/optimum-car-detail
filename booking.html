@@ -1,53 +1,67 @@
-<!-- Collapsible Add-Ons Section -->
-<div class="form-group" style="margin-bottom: 20px;">
-  <label style="font-weight: 600; display: block; margin-bottom: 6px;">Optional Add-Ons</label>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Optimum Car Detail - Online Scheduling</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Serif Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&display=swap" rel="stylesheet">
   
-  <details style="background: #1e1e1e; border: 1px solid #333; border-radius: 8px; padding: 10px 14px; cursor: pointer; color: #fff;">
-    <summary style="font-size: 15px; font-weight: 500; outline: none; user-select: none;">
-      Select Optional Add-Ons <span style="font-size: 13px; color: #aaa;">(tap to expand)</span>
-    </summary>
-    
-    <div style="margin-top: 14px; display: flex; flex-direction: column; gap: 10px; border-top: 1px solid #2a2a2a; padding-top: 12px; cursor: default;">
-      
-      <!-- 18-Month Ceramic Coating -->
-      <label style="display: flex; align-items: center; justify-content: space-between; font-size: 14px; cursor: pointer;">
-        <span style="display: flex; align-items: center; gap: 8px;">
-          <input type="checkbox" name="addons" value="18-Month Ceramic Coating" data-price="89" style="accent-color: #a3824c; width: 16px; height: 16px;">
-          18-Month Ceramic Coating
-        </span>
-        <strong style="color: #a3824c;">+$89</strong>
-      </label>
+  <!-- EmailJS Library -->
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+  <script type="text/javascript">
+    (function(){
+      emailjs.init("YKBjRAxda8HgvqWfS");
+    })();
+  </script>
 
-      <!-- Engine Bay Detail -->
-      <label style="display: flex; align-items: center; justify-content: space-between; font-size: 14px; cursor: pointer;">
-        <span style="display: flex; align-items: center; gap: 8px;">
-          <input type="checkbox" name="addons" value="Engine Bay Detail" data-price="40" style="accent-color: #a3824c; width: 16px; height: 16px;">
-          Engine Bay Detail
-        </span>
-        <strong style="color: #a3824c;">+$40</strong>
-      </label>
+  <style>
+    body { 
+      background-color: #0b1a13; 
+      color: #f3f4f6; 
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    h1, h2, h3, h4, .serif-heading { 
+      font-family: 'Playfair Display', serif; 
+    }
+    .btn-gold {
+      background-color: #a3824c;
+      color: #ffffff;
+    }
+    .btn-gold:hover {
+      background-color: #8c6e3b;
+    }
+    .selected-card { 
+      border-color: #a3824c !important; 
+      background-color: #07120d !important; 
+    }
+    .cal-day { aspect-ratio: 1 / 1; }
+    .cal-day-disabled { opacity: 0.2; cursor: not-allowed; pointer-events: none; }
+    .cal-day-selected { 
+      background-color: #a3824c !important; 
+      color: #ffffff !important; 
+      font-weight: bold; 
+      border-color: #c4a164 !important; 
+    }
+    .time-chip-selected { 
+      background-color: #a3824c !important; 
+      border-color: #c4a164 !important; 
+      color: #fff !important; 
+    }
+  </style>
+</head>
+<body class="min-h-screen">
 
-      <!-- Headlight Restoration -->
-      <label style="display: flex; align-items: center; justify-content: space-between; font-size: 14px; cursor: pointer;">
-        <span style="display: flex; align-items: center; gap: 8px;">
-          <input type="checkbox" name="addons" value="Headlight Restoration" data-price="45" style="accent-color: #a3824c; width: 16px; height: 16px;">
-          Headlight Restoration
-        </span>
-        <strong style="color: #a3824c;">+$45</strong>
-      </label>
-
-      <!-- Pet Hair / Heavy Soil Removal -->
-      <label style="display: flex; align-items: center; justify-content: space-between; font-size: 14px; cursor: pointer;">
-        <span style="display: flex; align-items: center; gap: 8px;">
-          <input type="checkbox" name="addons" value="Pet Hair Removal" data-price="35" style="accent-color: #a3824c; width: 16px; height: 16px;">
-          Excessive Pet Hair / Heavy Soil
-        </span>
-        <strong style="color: #a3824c;">+$35</strong>
-      </label>
-
-    </div>
-  </details>
-</div>      </div>
+  <!-- Header -->
+  <header class="bg-[#07120d] border-b border-[#183125] py-6">
+    <div class="max-w-4xl mx-auto px-4 flex justify-between items-center">
+      <div>
+        <h1 class="text-2xl font-normal tracking-wider text-white">Optimum Car Detail</h1>
+        <p class="text-xs text-emerald-200/60 mt-1">Shop Drop-Off & Mobile Service • Washington, UT</p>
+      </div>
       <span class="text-xs bg-[#a3824c]/20 text-[#d4b37f] border border-[#a3824c]/40 px-3 py-1 rounded uppercase tracking-wider font-semibold">Online Booking</span>
     </div>
   </header>
@@ -408,6 +422,9 @@
 
         if (isDisabled) {
           btn.classList.add('cal-day-disabled');
+          // Disable for real, not just visually: the class only hides these
+          // from the mouse, leaving them in the keyboard tab order.
+          btn.disabled = true;
         } else {
           if (selectedCalDateString === dateStr) {
             btn.classList.add('cal-day-selected');
@@ -453,6 +470,7 @@
       container.innerHTML = '<p class="text-xs text-emerald-200/50 italic p-3 text-center">Checking availability...</p>';
 
       let bookedSlots = [];
+      let availabilityUnknown = false;
       try {
         const response = await fetch(
           `${SUPABASE_URL}/rest/v1/bookings?select=booking_time&booking_date=eq.${selectedCalDateString}`, 
@@ -466,8 +484,13 @@
         const existingBookings = await response.json();
         if (Array.isArray(existingBookings)) {
           bookedSlots = existingBookings.map(b => b.booking_time);
+        } else {
+          availabilityUnknown = true;
         }
       } catch (err) {
+        // Failing open here would show every slot as free, so say so rather
+        // than letting the customer pick a slot we never actually checked.
+        availabilityUnknown = true;
         console.error('Error fetching booked slots:', err);
       }
 
@@ -536,6 +559,13 @@
 
         container.appendChild(chip);
       });
+
+      if (availabilityUnknown) {
+        const notice = document.createElement('p');
+        notice.className = 'text-[11px] text-amber-400/80 border border-amber-500/30 bg-amber-500/5 rounded-lg p-2.5 mt-1 leading-relaxed';
+        notice.innerText = 'We could not verify which slots are already taken, so all slots are shown. We will confirm your time by phone.';
+        container.appendChild(notice);
+      }
     }
 
     async function fetchServices() {
@@ -718,6 +748,12 @@
     async function handleBookingSubmit(e) {
       e.preventDefault();
 
+      // Guards the case where fetchServices() failed: selectedService stays
+      // null, so submitting would throw on selectedService.id further down.
+      if (!selectedService) {
+        alert('Packages are still loading, or failed to load. Please refresh the page and pick a package before booking.');
+        return;
+      }
       if (!selectedCalDateString) {
         alert('Please pick an available date from the calendar.');
         return;
@@ -808,7 +844,16 @@
           notes: document.getElementById('custNotes').value || 'None'
         };
 
-        await emailjs.send('service_uanlvh7', 'template_sw3jes8', templateParams);
+        // The booking row is already committed by this point, so a mail failure
+        // must not fall through to the catch below and tell the customer their
+        // booking failed. The database row is the record; the email is a notice.
+        let notificationFailed = false;
+        try {
+          await emailjs.send('service_uanlvh7', 'template_sw3jes8', templateParams);
+        } catch (mailErr) {
+          notificationFailed = true;
+          console.error('Booking saved, but the notification email failed:', mailErr);
+        }
 
         // 3. Display Confirmation View
         document.getElementById('summaryDetails').innerHTML = `
@@ -819,6 +864,7 @@
           <p><strong>PACKAGE:</strong> ${selectedService.name}</p>
           <p><strong>DATE & TIME:</strong> ${payload.booking_date} @ ${payload.booking_time}</p>
           <p><strong>TOTAL ESTIMATE:</strong> $${payload.total_price}</p>
+          ${notificationFailed ? '<p class="text-amber-400 border-t border-[#183125] pt-2 mt-2">Your booking is saved, but our email notification did not go through. Please call to confirm we have received it.</p>' : ''}
         `;
 
         document.getElementById('bookingForm').classList.add('hidden');
