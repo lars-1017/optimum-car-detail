@@ -1,67 +1,53 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Optimum Car Detail - Online Scheduling</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Serif Font -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&display=swap" rel="stylesheet">
+<!-- Collapsible Add-Ons Section -->
+<div class="form-group" style="margin-bottom: 20px;">
+  <label style="font-weight: 600; display: block; margin-bottom: 6px;">Optional Add-Ons</label>
   
-  <!-- EmailJS Library -->
-  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
-  <script type="text/javascript">
-    (function(){
-      emailjs.init("YKBjRAxda8HgvqWfS");
-    })();
-  </script>
+  <details style="background: #1e1e1e; border: 1px solid #333; border-radius: 8px; padding: 10px 14px; cursor: pointer; color: #fff;">
+    <summary style="font-size: 15px; font-weight: 500; outline: none; user-select: none;">
+      Select Optional Add-Ons <span style="font-size: 13px; color: #aaa;">(tap to expand)</span>
+    </summary>
+    
+    <div style="margin-top: 14px; display: flex; flex-direction: column; gap: 10px; border-top: 1px solid #2a2a2a; padding-top: 12px; cursor: default;">
+      
+      <!-- 18-Month Ceramic Coating -->
+      <label style="display: flex; align-items: center; justify-content: space-between; font-size: 14px; cursor: pointer;">
+        <span style="display: flex; align-items: center; gap: 8px;">
+          <input type="checkbox" name="addons" value="18-Month Ceramic Coating" data-price="89" style="accent-color: #a3824c; width: 16px; height: 16px;">
+          18-Month Ceramic Coating
+        </span>
+        <strong style="color: #a3824c;">+$89</strong>
+      </label>
 
-  <style>
-    body { 
-      background-color: #0b1a13; 
-      color: #f3f4f6; 
-      font-family: 'Plus Jakarta Sans', sans-serif;
-    }
-    h1, h2, h3, h4, .serif-heading { 
-      font-family: 'Playfair Display', serif; 
-    }
-    .btn-gold {
-      background-color: #a3824c;
-      color: #ffffff;
-    }
-    .btn-gold:hover {
-      background-color: #8c6e3b;
-    }
-    .selected-card { 
-      border-color: #a3824c !important; 
-      background-color: #07120d !important; 
-    }
-    .cal-day { aspect-ratio: 1 / 1; }
-    .cal-day-disabled { opacity: 0.2; cursor: not-allowed; pointer-events: none; }
-    .cal-day-selected { 
-      background-color: #a3824c !important; 
-      color: #ffffff !important; 
-      font-weight: bold; 
-      border-color: #c4a164 !important; 
-    }
-    .time-chip-selected { 
-      background-color: #a3824c !important; 
-      border-color: #c4a164 !important; 
-      color: #fff !important; 
-    }
-  </style>
-</head>
-<body class="min-h-screen">
+      <!-- Engine Bay Detail -->
+      <label style="display: flex; align-items: center; justify-content: space-between; font-size: 14px; cursor: pointer;">
+        <span style="display: flex; align-items: center; gap: 8px;">
+          <input type="checkbox" name="addons" value="Engine Bay Detail" data-price="40" style="accent-color: #a3824c; width: 16px; height: 16px;">
+          Engine Bay Detail
+        </span>
+        <strong style="color: #a3824c;">+$40</strong>
+      </label>
 
-  <!-- Header -->
-  <header class="bg-[#07120d] border-b border-[#183125] py-6">
-    <div class="max-w-4xl mx-auto px-4 flex justify-between items-center">
-      <div>
-        <h1 class="text-2xl font-normal tracking-wider text-white">Optimum Car Detail</h1>
-        <p class="text-xs text-emerald-200/60 mt-1">Shop Drop-Off & Mobile Service • Washington, UT</p>
-      </div>
+      <!-- Headlight Restoration -->
+      <label style="display: flex; align-items: center; justify-content: space-between; font-size: 14px; cursor: pointer;">
+        <span style="display: flex; align-items: center; gap: 8px;">
+          <input type="checkbox" name="addons" value="Headlight Restoration" data-price="45" style="accent-color: #a3824c; width: 16px; height: 16px;">
+          Headlight Restoration
+        </span>
+        <strong style="color: #a3824c;">+$45</strong>
+      </label>
+
+      <!-- Pet Hair / Heavy Soil Removal -->
+      <label style="display: flex; align-items: center; justify-content: space-between; font-size: 14px; cursor: pointer;">
+        <span style="display: flex; align-items: center; gap: 8px;">
+          <input type="checkbox" name="addons" value="Pet Hair Removal" data-price="35" style="accent-color: #a3824c; width: 16px; height: 16px;">
+          Excessive Pet Hair / Heavy Soil
+        </span>
+        <strong style="color: #a3824c;">+$35</strong>
+      </label>
+
+    </div>
+  </details>
+</div>      </div>
       <span class="text-xs bg-[#a3824c]/20 text-[#d4b37f] border border-[#a3824c]/40 px-3 py-1 rounded uppercase tracking-wider font-semibold">Online Booking</span>
     </div>
   </header>
