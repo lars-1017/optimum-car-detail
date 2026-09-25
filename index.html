@@ -370,7 +370,8 @@
     // and falls in behind these, ahead of the ceramic coating card.
     const PACKAGE_ORDER = [
       /premium\s*detail/i,
-      /interior\s*detail/i,
+      /^(?!.*minivan).*interior\s*detail/i,
+      /minivan/i,
       /exterior\s*detail/i,
       /sale-?\s*ready/i
     ];
@@ -790,46 +791,43 @@
           <h3 class="font-normal text-base md:text-lg text-zinc-100">Ceramic Coating</h3>
           <p class="coating-price text-xl font-normal text-[#d4b37f] serif-heading">${fromLabel}</p>
         </div>
-        <p class="text-xs text-emerald-200/60 mt-1">Choose a coverage tier to select this package.</p>
-        <div class="grid grid-cols-3 gap-2 mt-3" role="radiogroup" aria-label="Ceramic coating coverage tier">
-          ${tiers.map((tier, i) => `
-            <label class="coating-tier block border-2 border-[#183125] bg-[#07120d] rounded-xl p-2.5 md:p-3 cursor-pointer hover:border-[#a3824c] transition focus-within:ring-2 focus-within:ring-[#a3824c]">
-              <input type="radio" name="coatingTier" class="coating-tier-input sr-only" value="${i}">
-              <p class="text-[10px] font-bold uppercase tracking-wider text-emerald-200/50">Tier ${i + 1}</p>
-              <p class="font-normal text-sm md:text-base text-zinc-100 leading-tight mt-0.5">${coatingTierLabel(tier)} Coverage</p>
-              <p class="text-lg font-normal text-[#d4b37f] serif-heading mt-1">$${tier.price}</p>
-            </label>
-          `).join('')}
-        </div>
+        <label for="coatingTierSelect" class="block text-xs text-emerald-200/60 mt-1">Choose a coverage tier to select this package.</label>
+        <select id="coatingTierSelect" class="coating-tier-select w-full mt-2 px-3 py-2 bg-[#07120d] border border-[#183125] rounded-xl text-zinc-100 text-sm cursor-pointer focus:outline-none focus:border-[#a3824c]">
+          <option value="" selected>Select coverage...</option>
+          ${tiers.map((tier, i) => `<option value="${i}">${coatingTierLabel(tier)} Coverage — $${tier.price}</option>`).join('')}
+        </select>
         <p class="coating-description text-xs text-emerald-200/70 mt-3 border-t border-[#183125] pt-2">${introText}</p>
       `;
 
-      card.querySelectorAll('.coating-tier-input').forEach((input, i) => {
-        input.addEventListener('change', () => {
-          if (!input.checked) return;
-          // The tiers are their own radio group, so clear the package group by
-          // hand rather than parking a hidden radio inside this card.
-          document
-            .querySelectorAll('#serviceContainer input[name="package"]')
-            .forEach((radio) => { radio.checked = false; });
-          highlightCoatingTier(card, i);
-          card.querySelector('.coating-price').textContent = `$${tiers[i].price}`;
-          card.querySelector('.coating-description').textContent = tiers[i].description || '';
-          selectService(tiers[i], card);
-        });
+      const select = card.querySelector('.coating-tier-select');
+      select.addEventListener('change', () => {
+        if (select.value === '') {
+          // Going back to the placeholder un-picks the coating.
+          if (selectedService && isCeramicPackage(selectedService)) {
+            selectedService = null;
+            card.classList.remove('selected-card', 'border-[#a3824c]');
+            card.classList.add('border-[#183125]', 'bg-[#0b1a13]');
+            syncCoatingCard();
+            syncIncludedAddons();
+            updateTotal();
+            renderCalendar();
+            renderTimeSlots();
+            updateSubmitState();
+          }
+          return;
+        }
+        const tier = tiers[parseInt(select.value, 10)];
+        // The coating lives outside the package radio group, so clear that
+        // group by hand when a coverage tier is chosen.
+        document
+          .querySelectorAll('#serviceContainer input[name="package"]')
+          .forEach((radio) => { radio.checked = false; });
+        card.querySelector('.coating-price').textContent = `$${tier.price}`;
+        card.querySelector('.coating-description').textContent = tier.description || '';
+        selectService(tier, card);
       });
 
       return card;
-    }
-
-    function highlightCoatingTier(card, activeIndex) {
-      card.querySelectorAll('.coating-tier').forEach((tier, i) => {
-        const active = i === activeIndex;
-        tier.classList.toggle('border-[#a3824c]', active);
-        tier.classList.toggle('border-[#183125]', !active);
-        tier.classList.toggle('bg-[#0b1a13]', active);
-        tier.classList.toggle('bg-[#07120d]', !active);
-      });
     }
 
     // Selecting any other package drops the coating card back to its unpicked state.
@@ -838,8 +836,7 @@
       if (!card) return;
       if (selectedService && isCeramicPackage(selectedService)) return;
 
-      card.querySelectorAll('.coating-tier-input').forEach((input) => { input.checked = false; });
-      highlightCoatingTier(card, -1);
+      card.querySelector('.coating-tier-select').value = '';
       card.querySelector('.coating-price').textContent = card.dataset.fromLabel;
       card.querySelector('.coating-description').textContent = card.dataset.introText;
     }
