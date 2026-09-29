@@ -178,6 +178,10 @@
 
           <div class="lg:col-span-5 bg-[#0b1a13] border border-[#183125] rounded-xl p-3 flex flex-col justify-between">
             <div>
+              <div class="grid grid-cols-2 gap-2 mb-3" role="group" aria-label="Service type">
+                <button type="button" data-mode="mobile" onclick="setServiceMode('mobile')" aria-pressed="true" class="mode-btn px-2.5 py-2 bg-[#07120d] border border-[#a3824c] text-[#d4b37f] rounded-lg text-xs font-bold transition">We come to you</button>
+                <button type="button" data-mode="shop" onclick="setServiceMode('shop')" aria-pressed="false" class="mode-btn px-2.5 py-2 bg-[#07120d] border border-[#183125] text-emerald-200/60 rounded-lg text-xs font-bold transition">Drop off at our shop</button>
+              </div>
               <h4 class="text-xs font-bold text-emerald-200/50 uppercase tracking-wider mb-1">Available Times</h4>
               <p id="selectedDateTitle" class="text-base font-normal text-white mb-3">Please choose a date from calendar</p>
               <div id="timeSlotsContainer" class="grid grid-cols-2 gap-2 max-h-[220px] overflow-y-auto pr-2 custom-scrollbar">
@@ -280,7 +284,7 @@
 
     const SCHEDULE = {
       leadTimeHours: 2,
-      horizonDays: 60,
+      horizonDays: 21,
       assumedJobHours: 2,
       timeZone: 'America/Denver'
     };
@@ -294,6 +298,7 @@
     let selectedService = null;
     let selectedCalDateString = null;
     let selectedSlot = null;
+    let selectedMode = 'mobile';
 
     let currentDate = new Date();
     let bookedByDate = {};
@@ -392,10 +397,12 @@
       return years === Number.MAX_SAFE_INTEGER ? service.name : `${years}-Year`;
     }
 
+    // Start times within business hours. Every time can be booked as either
+    // mobile service or shop drop-off; the customer picks the mode separately.
     function slotsForDate(dateStr) {
       const dayOfWeek = new Date(dateStr + 'T00:00:00').getDay();
       const slots = [];
-      const add = (minutes, mode) => slots.push({ minutes, mode });
+      const add = (minutes) => slots.push({ minutes });
 
       if (dayOfWeek === 0) {
         // Closed on Sundays
@@ -403,18 +410,45 @@
       }
 
       if (dayOfWeek >= 1 && dayOfWeek <= 4) {
-        // Mon–Thu Shop Drop-Off: 7:00 AM – 2:00 PM hourly + 2:30 PM
-        for (let m = 7 * 60; m <= 14 * 60; m += 60) add(m, 'shop');
-        add(14 * 60 + 30, 'shop');
-
-        // Mon–Thu Mobile: 3:30 PM to 5:30 PM
-        for (let m = 15 * 60 + 30; m <= 17 * 60 + 30; m += 30) add(m, 'mobile');
-      } else if (dayOfWeek === 5 || dayOfWeek === 6) {
-        // Friday & Saturday Mobile Detailing (8:00 AM to 6:00 PM block)
-        for (let m = 8 * 60; m <= 17 * 60; m += 60) add(m, 'mobile');
+        // Mon–Thu: 7:00 AM – 5:00 PM hourly + 5:30 PM
+        for (let m = 7 * 60; m <= 17 * 60; m += 60) add(m);
+        add(17 * 60 + 30);
+      } else {
+        // Fri & Sat: 8:00 AM – 5:00 PM hourly (done by 6:00 PM)
+        for (let m = 8 * 60; m <= 17 * 60; m += 60) add(m);
       }
 
-      return slots.sort((a, b) => a.minutes - b.minutes || (a.mode === 'shop' ? -1 : 1));
+      return slots;
+    }
+
+    // "Fake it" filter: shows about 30% of genuinely open times as booked so the
+    // schedule looks busier. It blocks the slowest times first (early morning
+    // and late afternoon, furthest from midday), with a small per-date jitter
+    // so the pattern varies day to day. The result is deterministic, so a
+    // customer sees the same held times on every visit.
+    const FAKE_IT = { enabled: true, share: 0.3 };
+
+    function seededJitter(text) {
+      let h = 2166136261;
+      for (let i = 0; i < text.length; i++) {
+        h ^= text.charCodeAt(i);
+        h = Math.imul(h, 16777619);
+      }
+      return ((h >>> 0) % 1000) / 1000;
+    }
+
+    function heldMinutesForDate(dateStr) {
+      if (!FAKE_IT.enabled) return new Set();
+      const open = slotsForDate(dateStr).filter((slot) => !slotIsReallyTaken(dateStr, slot.minutes));
+      // Always leave at least one real opening on a day that has any.
+      const count = Math.min(Math.round(open.length * FAKE_IT.share), Math.max(open.length - 1, 0));
+      const slowness = (m) => Math.abs(m - 12 * 60) / 60 + seededJitter(`${dateStr}|${m}`) * 1.5;
+      return new Set(
+        open
+          .sort((a, b) => slowness(b.minutes) - slowness(a.minutes))
+          .slice(0, count)
+          .map((slot) => slot.minutes)
+      );
     }
 
     function jobMinutes() {
@@ -430,6 +464,10 @@
     }
 
     function slotIsTaken(dateStr, minutes) {
+      return slotIsReallyTaken(dateStr, minutes) || heldMinutesForDate(dateStr).has(minutes);
+    }
+
+    function slotIsReallyTaken(dateStr, minutes) {
       const busy = bookedByDate[dateStr];
       if (!busy || !busy.length) return false;
       const start = minutes;
@@ -655,7 +693,6 @@
           <span class="flex items-center justify-between gap-2">
             <span>
               <span class="font-bold text-sm">${formatTime(slot.minutes)}</span>
-              <span class="block text-[11px] text-emerald-200/60">${MODE_LABELS[slot.mode].chip}</span>
             </span>
             ${badge}
           </span>
@@ -677,18 +714,37 @@
     }
 
     function selectSlot(slot, element) {
-      selectedSlot = slot;
+      selectedSlot = { minutes: slot.minutes, mode: selectedMode };
 
       document.querySelectorAll('.time-chip').forEach((c) => c.classList.remove('time-chip-selected'));
       element.classList.add('time-chip-selected');
 
       document.getElementById('summarySlotText').innerText =
-        `${formatDate(selectedCalDateString)} at ${formatTime(slot.minutes)} — ${MODE_LABELS[slot.mode].chip}`;
+        `${formatDate(selectedCalDateString)} at ${formatTime(slot.minutes)} — ${MODE_LABELS[selectedMode].chip}`;
       document.getElementById('selectedSlotSummary').classList.remove('hidden');
 
-      applyModeToForm(slot.mode);
+      applyModeToForm(selectedMode);
       clearFlags();
       updateSubmitState();
+    }
+
+    function setServiceMode(mode) {
+      selectedMode = mode;
+      document.querySelectorAll('.mode-btn').forEach((btn) => {
+        const active = btn.dataset.mode === mode;
+        btn.classList.toggle('border-[#a3824c]', active);
+        btn.classList.toggle('text-[#d4b37f]', active);
+        btn.classList.toggle('border-[#183125]', !active);
+        btn.classList.toggle('text-emerald-200/60', !active);
+        btn.setAttribute('aria-pressed', String(active));
+      });
+
+      if (selectedSlot) {
+        selectedSlot.mode = mode;
+        document.getElementById('summarySlotText').innerText =
+          `${formatDate(selectedCalDateString)} at ${formatTime(selectedSlot.minutes)} — ${MODE_LABELS[mode].chip}`;
+        applyModeToForm(mode);
+      }
     }
 
     function applyModeToForm(mode) {
