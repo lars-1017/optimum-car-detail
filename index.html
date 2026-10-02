@@ -768,7 +768,7 @@
         <h3 class="font-normal text-base md:text-lg text-zinc-100 leading-tight">${service.name}</h3>
         <p class="text-xl font-normal text-[#d4b37f] mt-1 serif-heading">$${service.price}</p>
         ${durationTag}
-        <p class="text-xs text-emerald-200/70 mt-2 border-t border-[#183125] pt-2 line-clamp-3">${service.description || ''}</p>
+        <p class="text-xs text-emerald-200/70 mt-2 border-t border-[#183125] pt-2 break-words">${service.description || ''}</p>
       `;
 
       label.querySelector('input').addEventListener('change', () => selectService(service, label));
