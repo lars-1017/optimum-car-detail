@@ -65,26 +65,26 @@
       <div class="grid md:grid-cols-3 gap-4 text-xs">
         <div class="bg-[#0b1a13] p-4 rounded-xl border border-[#183125]">
           <div class="flex items-center space-x-2 text-[#d4b37f] font-bold mb-1">
-            <span>☀️ Weekdays Before 3 PM</span>
+            <span>☀️ Shop Drop-Off</span>
           </div>
           <p class="text-zinc-200 font-semibold">Shop Drop-Off</p>
-          <p class="text-emerald-200/60 mt-1">Drop off at our Washington shop between 7:00 AM and 3:00 PM (Mon–Fri).</p>
+          <p class="text-emerald-200/60 mt-1">Drop off at our Washington shop anytime during regular business hours, Monday–Saturday.</p>
         </div>
 
         <div class="bg-[#0b1a13] p-4 rounded-xl border border-[#183125]">
           <div class="flex items-center space-x-2 text-[#d4b37f] font-bold mb-1">
-            <span>🌙 Mobile Detailing</span>
+            <span>🚗 Mobile Detailing</span>
           </div>
-          <p class="text-zinc-200 font-semibold">Flexible After-Hours</p>
-          <p class="text-emerald-200/60 mt-1">Mon–Thu after 3 PM | <strong>Fridays 1:30 PM – 5:30 PM</strong>.</p>
+          <p class="text-zinc-200 font-semibold">Available Throughout Business Hours</p>
+          <p class="text-emerald-200/60 mt-1">We come to you Monday–Saturday, with appointments starting at 8:00 AM.</p>
         </div>
 
         <div class="bg-[#0b1a13] p-4 rounded-xl border border-[#183125]">
           <div class="flex items-center space-x-2 text-[#d4b37f] font-bold mb-1">
-            <span>🚗 Weekends (Sat – Sun)</span>
+            <span>🕗 Business Hours</span>
           </div>
-          <p class="text-zinc-200 font-semibold">Full-Day Mobile Service</p>
-          <p class="text-emerald-200/60 mt-1">We bring the full mobile rig to you Saturday & Sunday from 8:00 AM to 6:00 PM.</p>
+          <p class="text-zinc-200 font-semibold">Open Monday–Saturday</p>
+          <p class="text-emerald-200/60 mt-1">Mon–Thu 8:00 AM–5:30 PM | Fri–Sat 8:00 AM–6:00 PM. Closed Sunday.</p>
         </div>
       </div>
     </section>
@@ -99,9 +99,9 @@
           <div onclick="setServiceMode('shop', this)" id="modeShopCard" class="mode-card selected-card border-2 border-[#a3824c] rounded-xl p-5 cursor-pointer transition">
             <div class="flex items-center justify-between">
               <h3 class="font-bold text-zinc-100 text-base">Shop Drop-Off</h3>
-              <span class="text-[10px] bg-[#183125] text-emerald-200 font-bold px-2 py-0.5 rounded">Mon – Fri (Before 3 PM)</span>
+              <span class="text-[10px] bg-[#183125] text-emerald-200 font-bold px-2 py-0.5 rounded">Mon – Sat</span>
             </div>
-            <p class="text-xs text-emerald-200/60 mt-2">Drop-off between <strong>7:00 AM – 3:00 PM</strong> at our Washington shop.</p>
+            <p class="text-xs text-emerald-200/60 mt-2">Drop off at our Washington shop: <strong>Mon–Thu 8 AM–5:30 PM; Fri–Sat 8 AM–6 PM.</strong></p>
           </div>
 
           <div onclick="setServiceMode('mobile', this)" id="modeMobileCard" class="mode-card border-2 border-[#183125] bg-[#0b1a13] rounded-xl p-5 cursor-pointer hover:border-[#a3824c]/50 transition">
@@ -109,7 +109,7 @@
               <h3 class="font-bold text-zinc-100 text-base">Mobile Detailing</h3>
               <span class="text-[10px] bg-[#a3824c]/20 text-[#d4b37f] font-bold px-2 py-0.5 rounded border border-[#a3824c]/30">We Come To You</span>
             </div>
-            <p class="text-xs text-emerald-200/60 mt-2">Mon–Thu after 3 PM, <strong>Fri 1:30 PM–5:30 PM</strong>, & Sat–Sun 8 AM–6 PM.</p>
+            <p class="text-xs text-emerald-200/60 mt-2">Book mobile detailing anytime during business hours: <strong>Mon–Thu 8 AM–5:30 PM; Fri–Sat 8 AM–6 PM.</strong></p>
           </div>
         </div>
       </section>
@@ -190,7 +190,7 @@
             </div>
             <div id="calendarDaysGrid" class="grid grid-cols-7 gap-1"></div>
             <p id="modeHelperText" class="text-[11px] text-emerald-200/60 mt-3 text-center border-t border-[#183125] pt-2">
-              Showing available dates for <strong class="text-[#d4b37f]">Shop Drop-Off (Mon–Fri Before 3 PM)</strong>
+              Showing available dates for <strong class="text-[#d4b37f]">Shop Drop-Off (Mon–Thu 8 AM–5:30 PM; Fri–Sat 8 AM–6 PM)</strong>
             </p>
           </div>
 
@@ -354,11 +354,11 @@
       if (mode === 'mobile') {
         addressContainer.classList.remove('hidden');
         addressInput.required = true;
-        modeHelper.innerHTML = 'Showing available dates for <strong class="text-[#d4b37f]">Mobile Detailing (Mon–Thu after 3 PM, Fri 1:30 PM–5:30 PM, Sat–Sun 8 AM–6 PM)</strong>';
+        modeHelper.innerHTML = 'Showing available dates for <strong class="text-[#d4b37f]">Mobile Detailing (Mon–Thu 8 AM–5:30 PM; Fri–Sat 8 AM–6 PM)</strong>';
       } else {
         addressContainer.classList.add('hidden');
         addressInput.required = false;
-        modeHelper.innerHTML = 'Showing available dates for <strong class="text-[#d4b37f]">Shop Drop-Off (Mon–Fri Before 3 PM)</strong>';
+        modeHelper.innerHTML = 'Showing available dates for <strong class="text-[#d4b37f]">Shop Drop-Off (Mon–Thu 8 AM–5:30 PM; Fri–Sat 8 AM–6 PM)</strong>';
       }
 
       renderCalendar();
@@ -391,7 +391,6 @@
         const dayObj = new Date(year, month, day);
         const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
         const dayOfWeek = dayObj.getDay();
-        const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
 
         const btn = document.createElement('button');
         btn.type = 'button';
@@ -402,7 +401,7 @@
 
         if (dayObj < today) {
           isDisabled = true;
-        } else if (currentMode === 'shop' && isWeekend) {
+        } else if (dayOfWeek === 0) {
           isDisabled = true;
         }
 
@@ -448,6 +447,26 @@
       document.getElementById('selectedSlotSummary').classList.add('hidden');
     }
 
+    function bookingTimeKey(slot) {
+      const match = /(\d{1,2}):(\d{2})\s*(AM|PM)/i.exec(String(slot || ''));
+      if (!match) return null;
+      const hours = Number(match[1]) % 12 + (match[3].toUpperCase() === 'PM' ? 12 : 0);
+      return hours * 60 + Number(match[2]);
+    }
+
+    function slotsForDay(dayOfWeek, mode) {
+      const slots = [];
+      if (dayOfWeek === 0) return slots;
+      const closingMinutes = dayOfWeek <= 4 ? 17 * 60 + 30 : 18 * 60;
+      for (let minutes = 8 * 60; minutes < closingMinutes; minutes += 30) {
+        const hours = Math.floor(minutes / 60);
+        const label = mode === 'shop' ? 'Drop-Off' : 'Mobile Service';
+        const time = `${String(hours % 12 || 12).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')} ${hours >= 12 ? 'PM' : 'AM'}`;
+        slots.push(`${time} ${label}`);
+      }
+      return slots;
+    }
+
     async function renderTimeSlots(dayOfWeek) {
       const container = document.getElementById('timeSlotsContainer');
       container.innerHTML = '<p class="text-xs text-emerald-200/50 italic p-3 text-center">Checking availability...</p>';
@@ -455,7 +474,7 @@
       let bookedSlots = [];
       try {
         const response = await fetch(
-          `${SUPABASE_URL}/rest/v1/bookings?select=booking_time&booking_date=eq.${selectedCalDateString}`, 
+          `${SUPABASE_URL}/rest/v1/bookings?select=booking_time&booking_date=eq.${selectedCalDateString}`,
           {
             headers: {
               'apikey': SUPABASE_ANON_KEY,
@@ -465,7 +484,7 @@
         );
         const existingBookings = await response.json();
         if (Array.isArray(existingBookings)) {
-          bookedSlots = existingBookings.map(b => b.booking_time);
+          bookedSlots = existingBookings.map(booking => bookingTimeKey(booking.booking_time)).filter(minutes => minutes !== null);
         }
       } catch (err) {
         console.error('Error fetching booked slots:', err);
@@ -473,46 +492,10 @@
 
       container.innerHTML = '';
 
-      let slots = [];
-      const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
-      const isFriday = (dayOfWeek === 5);
-
-      if (currentMode === 'shop') {
-        slots = [
-          '07:00 AM Drop-Off',
-          '09:00 AM Drop-Off',
-          '11:00 AM Drop-Off',
-          '01:00 PM Drop-Off',
-          '02:30 PM Drop-Off (Last Before 3 PM)'
-        ];
-      } else {
-        if (isWeekend) {
-          slots = [
-            '08:00 AM Weekend Mobile',
-            '10:30 AM Weekend Mobile',
-            '01:00 PM Weekend Mobile',
-            '03:30 PM Weekend Mobile (Ends by 6:00 PM)'
-          ];
-        } else if (isFriday) {
-          // Friday Mobile Hours: 1:30 PM to 5:30 PM
-          slots = [
-            '01:30 PM Friday Mobile',
-            '02:30 PM Friday Mobile',
-            '03:30 PM Friday Mobile',
-            '04:30 PM Friday Mobile'
-          ];
-        } else {
-          // Mon-Thu Mobile Hours: After 3 PM
-          slots = [
-            '03:30 PM Mobile Slot',
-            '04:30 PM Mobile Slot',
-            '05:30 PM Mobile Slot'
-          ];
-        }
-      }
+      const slots = slotsForDay(dayOfWeek, currentMode);
 
       slots.forEach(slot => {
-        const isBooked = bookedSlots.includes(slot);
+        const isBooked = bookedSlots.includes(bookingTimeKey(slot));
         const chip = document.createElement('button');
         chip.type = 'button';
 
@@ -732,8 +715,9 @@
       submitBtn.disabled = true;
 
       try {
+        const availabilityQuery = `${SUPABASE_URL}/rest/v1/bookings?select=booking_time&booking_date=eq.${selectedCalDateString}`;
         const checkAvailability = await fetch(
-          `${SUPABASE_URL}/rest/v1/bookings?select=id&booking_date=eq.${selectedCalDateString}&booking_time=eq.${encodeURIComponent(selectedTimeSlot)}`, 
+          availabilityQuery,
           {
             headers: {
               'apikey': SUPABASE_ANON_KEY,
@@ -743,7 +727,7 @@
         );
         const existing = await checkAvailability.json();
 
-        if (Array.isArray(existing) && existing.length > 0) {
+        if (Array.isArray(existing) && existing.some(booking => bookingTimeKey(booking.booking_time) === bookingTimeKey(selectedTimeSlot))) {
           alert('Sorry! That time slot was just booked by another customer. Please select another slot.');
           const dateObj = new Date(selectedCalDateString + 'T00:00:00');
           renderTimeSlots(dateObj.getDay());

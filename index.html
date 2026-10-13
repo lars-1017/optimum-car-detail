@@ -163,6 +163,25 @@
       <!-- Step 3: Calendar Date & Time Selection -->
       <section id="sectionSchedule" class="bg-[#07120d] border border-[#183125] rounded-2xl p-4 md:p-5 shadow-xl">
         <h2 class="text-lg font-normal text-white mb-3 border-b border-[#183125] pb-1.5">3. Select Date &amp; Time</h2>
+        <p class="text-xs text-emerald-200/60 mb-3">Shop drop-off and mobile detailing: Mon–Thu 8:00 AM–5:30 PM; Fri–Sat 8:00 AM–6:00 PM. Closed Sunday.</p>
+        <div class="mb-4 bg-[#a3824c]/10 border-2 border-[#a3824c]/60 rounded-2xl p-4">
+          <div class="flex items-center justify-between gap-2 mb-3">
+            <p class="text-base md:text-lg font-semibold text-white">How would you prefer your detail?</p>
+            <span class="text-[10px] uppercase tracking-wider font-bold text-[#d4b37f] bg-[#a3824c]/20 px-2 py-0.5 rounded">Required</span>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <button type="button" data-mode="shop" onclick="selectMode('shop')" class="mode-option px-4 py-3 bg-[#0b1a13] border-2 border-[#183125] hover:border-[#a3824c] rounded-xl text-left text-zinc-100 transition">
+              <span class="block text-2xl mb-1" aria-hidden="true">🏠</span>
+              <span class="block font-bold text-base">Shop Drop-Off</span>
+              <span class="block text-xs text-emerald-200/70">Drop off at our shop</span>
+            </button>
+            <button type="button" data-mode="mobile" onclick="selectMode('mobile')" class="mode-option px-4 py-3 bg-[#0b1a13] border-2 border-[#183125] hover:border-[#a3824c] rounded-xl text-left text-zinc-100 transition">
+              <span class="block text-2xl mb-1" aria-hidden="true">🚗</span>
+              <span class="block font-bold text-base">Mobile Detailing</span>
+              <span class="block text-xs text-emerald-200/70">We come to you</span>
+            </button>
+          </div>
+        </div>
         <div class="grid lg:grid-cols-12 gap-3">
           <div class="lg:col-span-7 bg-[#0b1a13] border border-[#183125] rounded-xl p-3">
             <div class="flex items-center justify-between mb-4">
@@ -294,6 +313,7 @@
     let selectedService = null;
     let selectedCalDateString = null;
     let selectedSlot = null;
+    let selectedMode = null;
 
     let currentDate = new Date();
     let bookedByDate = {};
@@ -395,26 +415,16 @@
     function slotsForDate(dateStr) {
       const dayOfWeek = new Date(dateStr + 'T00:00:00').getDay();
       const slots = [];
-      const add = (minutes, mode) => slots.push({ minutes, mode });
-
       if (dayOfWeek === 0) {
-        // Closed on Sundays
         return slots;
       }
 
-      if (dayOfWeek >= 1 && dayOfWeek <= 4) {
-        // Mon–Thu Shop Drop-Off: 7:00 AM – 2:00 PM hourly + 2:30 PM
-        for (let m = 7 * 60; m <= 14 * 60; m += 60) add(m, 'shop');
-        add(14 * 60 + 30, 'shop');
-
-        // Mon–Thu Mobile: 3:30 PM to 5:30 PM
-        for (let m = 15 * 60 + 30; m <= 17 * 60 + 30; m += 30) add(m, 'mobile');
-      } else if (dayOfWeek === 5 || dayOfWeek === 6) {
-        // Friday & Saturday Mobile Detailing (8:00 AM to 6:00 PM block)
-        for (let m = 8 * 60; m <= 17 * 60; m += 60) add(m, 'mobile');
+      const closingMinutes = dayOfWeek <= 4 ? 17 * 60 + 30 : 18 * 60;
+      for (let minutes = 8 * 60; minutes < closingMinutes; minutes += 30) {
+        slots.push({ minutes });
       }
 
-      return slots.sort((a, b) => a.minutes - b.minutes || (a.mode === 'shop' ? -1 : 1));
+      return slots;
     }
 
     function jobMinutes() {
@@ -606,7 +616,6 @@
     function clearSlotSelection() {
       selectedSlot = null;
       document.getElementById('selectedSlotSummary').classList.add('hidden');
-      applyModeToForm(null);
     }
 
     function renderTimeSlots() {
@@ -655,7 +664,6 @@
           <span class="flex items-center justify-between gap-2">
             <span>
               <span class="font-bold text-sm">${formatTime(slot.minutes)}</span>
-              <span class="block text-[11px] text-emerald-200/60">${MODE_LABELS[slot.mode].chip}</span>
             </span>
             ${badge}
           </span>
@@ -682,13 +690,28 @@
       document.querySelectorAll('.time-chip').forEach((c) => c.classList.remove('time-chip-selected'));
       element.classList.add('time-chip-selected');
 
-      document.getElementById('summarySlotText').innerText =
-        `${formatDate(selectedCalDateString)} at ${formatTime(slot.minutes)} — ${MODE_LABELS[slot.mode].chip}`;
-      document.getElementById('selectedSlotSummary').classList.remove('hidden');
-
-      applyModeToForm(slot.mode);
+      updateSlotSummary();
       clearFlags();
       updateSubmitState();
+    }
+
+    function selectMode(mode) {
+      selectedMode = mode;
+      document.querySelectorAll('.mode-option').forEach((btn) => {
+        btn.classList.toggle('time-chip-selected', btn.dataset.mode === mode);
+      });
+      applyModeToForm(mode);
+      updateSlotSummary();
+      clearFlags();
+      updateSubmitState();
+    }
+
+    function updateSlotSummary() {
+      if (!selectedSlot) return;
+      const modeText = selectedMode ? ` — ${MODE_LABELS[selectedMode].chip}` : '';
+      document.getElementById('summarySlotText').innerText =
+        `${formatDate(selectedCalDateString)} at ${formatTime(selectedSlot.minutes)}${modeText}`;
+      document.getElementById('selectedSlotSummary').classList.remove('hidden');
     }
 
     function applyModeToForm(mode) {
@@ -933,6 +956,9 @@
       if (!selectedSlot) {
         return { label: 'Choose a time to continue', section: 'sectionSchedule', error: 'scheduleError' };
       }
+      if (!selectedMode) {
+        return { label: 'Choose drop-off or mobile to continue', section: 'sectionSchedule', error: 'scheduleError' };
+      }
       return null;
     }
 
@@ -992,7 +1018,7 @@
       submitBtn.innerText = 'Submitting Request...';
       submitBtn.disabled = true;
 
-      const mode = selectedSlot.mode;
+      const mode = selectedMode;
       const addons = selectedAddons();
       const total = currentTotal();
       const timeLabel = `${formatTime(selectedSlot.minutes)} ${MODE_LABELS[mode].short}`;
